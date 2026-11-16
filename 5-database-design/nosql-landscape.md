@@ -1,75 +1,59 @@
 # NoSQL Landscape: Key-Value, Document, Column, & Graph
 
 ### 1. Overview
-NoSQL (Not Only SQL) databases provide a mechanism for storage and retrieval of data modeled in means other than the tabular relations used in relational databases. For senior engineers, picking a NoSQL store is about matching the **Data Model** and **Access Pattern** to the right storage engine.
+NoSQL means databases that don't use relational tables as their main model. They differ a lot from each other. Pick one by matching its data model to how you will read and write the data, and know what you give up (joins, wide transactions, ad hoc queries).
 
 ### 2. Key Concepts
-*   **Key-Value**: Simplest form (e.g., Redis, DynamoDB). Map a unique key to a value. Best for high-speed caching and simple session state.
-*   **Document**: Stores data as JSON-like documents (e.g., MongoDB, CouchDB). Schema-less and flexible. Great for content management.
-*   **Column Store / Wide Column**: Stores data in columns instead of rows (e.g., Cassandra, HBase). Optimized for reading massive amounts of data in specific columns (Analytics/Time-series).
-*   **Graph DB**: Focuses on relationships between entities (e.g., Neo4j). Entities are "Nodes" and relationships are "Edges." Perfect for social networks or fraud detection.
+*   **Key-value**: Get a value by its key (Redis, DynamoDB). Very fast lookups; little querying by value.
+*   **Document**: JSON-like records with flexible fields and secondary indexes (MongoDB, Couchbase). Good when one entity is read and written as a unit.
+*   **Wide-column**: Rows grouped by a partition key and sorted inside it (Cassandra, HBase). High write throughput; fast reads within one partition. Not the same as a columnar store (ClickHouse, Redshift), which stores each column apart for analytics.
+*   **Graph**: Nodes and edges (Neo4j). Good for following relationships several hops deep.
+*   **NewSQL**: SQL and ACID transactions with automatic sharding across servers (CockroachDB, Google Spanner, YugabyteDB). Costs more latency per write than a single SQL server.
 
 ### 3. Real-World Usage
-*   **Leaderboards/Session Stores**: Using **Redis** (Key-Value) for sub-millisecond access to millions of active sessions.
-*   **Product Catalogs**: Using **MongoDB** (Document) where different products have wildly different attributes (e.g., a "Shirt" has size/color; a "Laptop" has CPU/RAM).
-*   **IoT Aggregation**: Using **Cassandra** (Wide Column) to store millions of sensor readings per second and querying by time range.
-*   **Fraud Detection/Recommendations**: Using **Neo4j** (Graph) to find "friends of friends who also bought this item" or "money transfers connecting 5 suspicious accounts."
+*   **Sessions, leaderboards**: Redis keys with TTLs and sorted sets.
+*   **Product catalog**: Documents, since a shirt and a laptop have different fields.
+*   **Sensor data**: Cassandra, one partition per device per time bucket, read by time range.
+*   **Fraud, recommendations**: A graph to find friends of friends, or money paths between accounts.
 
 ### 4. Tradeoffs
-*   **Flexibility vs. Integrity**: NoSQL is easy to evolve because there is no fixed schema, but you lose the "Safety Valve" of DB-level constraints (Joins/Foreign Keys). You must handle integrity in the application code.
-*   **Eventual Consistency vs. Availability**: Most NoSQL DBs prioritize Availability over Strict Consistency (The "AP" in CAP).
-*   **Query Power**: NoSQL usually has limited query capabilities compared to SQL. You often have to "duplicate" data to satisfy different query patterns (Denormalization).
+*   **Flexibility vs. integrity**: No fixed schema or foreign keys, so the app must check structure. MongoDB and DynamoDB have multi-record transactions, with more limits than SQL.
+*   **Consistency is a setting**: Cassandra sets it per query. DynamoDB has strong or eventual reads. MongoDB with majority reads and writes acts as CP. "NoSQL means AP" is too simple.
+*   **Queries designed up front**: A new query often needs a new index, a new table, or copied data.
 
 ### 5. When NOT to Use
-*   **Complex Financial Transactions**: If you need strict ACID across multiple records, SQL is almost always a better, safer choice.
-*   **Unknown Access Patterns**: NoSQL requires you to design your schema based on your queries (Query-First Design). If you don't know how you'll query the data yet, stick to SQL.
+*   **Many-record transactions**: Ledgers and similar data are simpler and safer in SQL.
+*   **Unknown queries**: Key-value and wide-column stores need query-first design. If you don't know the queries yet, use SQL.
 
 ### 6. Interview Focus
-*   **The Model Choice**: "Given a scenario like 'LinkedIn connection graph,' why would a Graph DB be 100x faster than a SQL DB with a 'Connections' table?"
-    * **SQL Approach**: To find "Friends of Friends," you would need to join the `Connections` table with itself multiple times (recursive join). This becomes extremely slow (exponential complexity) as the depth of the search increases (e.g., friends of friends of friends).
-    * **Graph DB Approach**: A Graph DB (like Neo4j) stores these connections as direct edges. Finding connections is a simple graph traversal operation. It has constant time complexity (O(1)) for traversing a single relationship, regardless of the total dataset size, making it vastly superior for connected data.
-    * **Example**: In Neo4j, finding friends of friends is a single Cypher query that traverses 2 levels of relationships. In SQL, it requires multiple self-joins, which is computationally expensive.
-    
+*   **Graph vs. SQL**: "Why might a graph database beat SQL for a connection graph?"
+    * In SQL, each hop is another self-join. Two hops are fine; "within 4 hops" needs a recursive CTE and gets slow.
+    * A graph DB stores each node's edges directly, so a hop costs about the number of edges followed, not the total graph size.
+    * Results still grow with each hop's fan-out, in both systems.
     ```cypher
-    // Neo4j: Find friends of friends
-    MATCH (p:Person)-[:FRIEND]->()-[:FRIEND]->(fof:Person)
-    WHERE p.name = 'Alice'
-    RETURN fof
+    MATCH (p:Person {name: 'Alice'})-[:FRIEND]->()-[:FRIEND]->(fof:Person)
+    WHERE fof <> p
+    RETURN DISTINCT fof
     ```
-
-*   **Schema Design**: "Design the schema for a social feed in DynamoDB. How do you handle 'Partition Keys' to avoid 'Hot Partitions'?"
-    * **Hot Partition**: When one partition key receives a disproportionately high volume of requests compared to others, causing a bottleneck. In DynamoDB, this can happen if you use a non-random partition key (e.g., `userId`) and a few users are very active.
-    * **Solution**: Use **Composite Keys** with a **Randomized Partition Key** or **Sharding**.
+*   **DynamoDB hot partition**: "Design a social feed. How do you avoid hot partitions?"
+    * Partition key per user, sort key per item: `PK = USER#123`, `SK = POST#<timestamp>`. One query returns a user's items in order.
+    * `userId` is usually a good key. One very active account can still exceed a partition's limit.
+    * Write sharding: add a suffix, `USER#123#0` to `USER#123#9`. Writes spread over 10 keys; reads query all 10 and merge.
+*   **MongoDB write concern**: "Why can MongoDB confirm a write that isn't on all replicas?"
+    * With `w: 1`, only the primary confirms. If it fails before copying, the write can be rolled back.
+    * Since MongoDB 5.0 the default is usually `w: "majority"`. Older versions and explicit settings may use `w: 1`.
+    * Use `{ writeConcern: { w: "majority", wtimeout: 5000 } }` for writes that must survive failover. A timeout returns an error but does not undo the write.
+*   **CAP**: "Which side do you pick for a bank ledger?"
+    * Partitions will happen. During one, choose consistency (refuse some requests) or availability (answer with maybe-stale data).
+    * Ledger: CP. The majority side keeps working; the minority side rejects writes. Some users see errors.
+*   **Expiring data**: "How do you remove old MongoDB documents automatically?"
+    * TTL index: an index on a date field with `expireAfterSeconds`. A background task deletes expired documents periodically, not instantly.
+    * Capped collection: fixed size, insertion order, oldest documents overwritten when full. MongoDB's docs prefer TTL indexes (or time series collections) in most cases.
+    ```javascript
+    db.sessions.createIndex({ createdAt: 1 }, { expireAfterSeconds: 3600 })
     ```
-    // DynamoDB Schema for Social Feed
-    {PartitionKey: 'USER#123', SortKey: 'TIMESTAMP#2024-01-01T10:00:00Z', data: {...}} // Actual Post
-    {PartitionKey: 'USER#123', SortKey: 'FEED#2024-01-01T10:00:00Z', data: {...}} // Aggregated Feed Item
-    ```
-    To avoid hot partitions, you can hash the partition key or use a random prefix to distribute data across multiple physical partitions.
-    ```
-    // Randomized Partition Key Example
-    {PartitionKey: 'USER#123#abc', SortKey: 'TIMESTAMP#2024-01-01T10:00:00Z', ...} 
-    ```
-
-    Query all shards in parallel, Merge + sort in application
-    
-*   **Consistency Tradeoffs**: "Explain why MongoDB might report a write as successful even if it hasn't reached all replicas. How do you fix this?" (Hint: Write Concerns).
-    * **MongoDB Write Concerns**: By default, MongoDB's write concern is `w:1`, which means the write is acknowledged by the primary node. It does not wait for replication to other nodes.
-    * **Fix**: To ensure data durability, you can increase the write concern to `w: 'majority'` or `w: <number_of_replicas>`. This requires the write to be acknowledged by a majority of the replica set members before it is considered successful.
-    ```
-    // MongoDB Write Concern Example
-    db.collection.insertOne(
-        { name: "Alice" },
-        { writeConcern: { w: "majority", wtimeout: 5000 } } // Wait for majority, with 5s timeout
-    );
-    ```
-    * **CAP Theorem**: "In a distributed system, you can only have two out of three: Consistency, Availability, and Partition Tolerance. Which two would you pick for a banking system?"
-        * **Answer**: **Consistency and Partition Tolerance (CP)**.
-        * **Reason**: In a banking system, data accuracy is paramount. It's better to make the system unavailable during a network partition (preventing inconsistent writes) than to allow incorrect balances.
-        * **Tradeoff**: You sacrifice Availability during network partitions. Users might see "System Unavailable" messages instead of potentially incorrect data.
-        * **Example**: If a bank's primary node fails, the system should stop accepting writes (Consistency) rather than allowing writes to a secondary node that might have stale data (Availability). This ensures that once a transaction is committed, it is consistent across the system.
 
 ### 7. Common Mistakes
-*   **The "One Database for Everything" Trap**: Trying to fit highly relational data into MongoDB or using Redis as a primary, persistent data store for critical financial data.
-*   **Schema-less = No Schema**: Failing to define a schema in the application layer, leading to "Document Rot" where 10 different versions of a "User" object exist in the same collection.
-*   **Scanning instead of Querying**: Performing massive scans in NoSQL because you didn't create the right indexes or Partition Keys, leading to huge costs and slow performance.
+*   **One database for everything**: Forcing relational data into documents, or keeping the only copy of critical data in a cache.
+*   **No schema at all**: Many shapes of "user" pile up in one collection. Validate in the app or with schema validation.
+*   **Scanning**: The key or index doesn't match the query, so every read scans. Slow, and costly on pay-per-request stores.

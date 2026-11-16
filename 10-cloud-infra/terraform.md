@@ -1,85 +1,100 @@
 # Cloud Architecture: Terraform (Infrastructure as Code)
 
 ### 1. Overview
-Terraform is an open-source tool that allows you to define and provide data center infrastructure using a high-level configuration language (HCL). For senior engineers, Terraform is the standard for managing "Immutable Infrastructure," where changes are made by modifying code rather than manually clicking in a Cloud Console.
+Terraform describes infrastructure (networks, databases, DNS, IAM) in HCL files. It compares the files with what exists and makes the API calls to close the gap. Changes then go through code review instead of console clicks. Terraform has used the Business Source License since 2023. OpenTofu is the open-source fork with a mostly compatible CLI.
 
 ### 2. Key Concepts
-*   **Providers**: Plugins that allow Terraform to interact with cloud providers (AWS, GCP, Azure), SaaS providers, or APIs.
-*   **Resources**: The "What" of your infrastructure—e.g., an EC2 instance, an S3 bucket, or a VPC.
-*   **Modules**: Containers for multiple resources that are used together. Modules allow you to create reusable "packages" of infrastructure (e.g., a "Standard Web Server" module).
-*   **State**: Terraform keeps track of the metadata of your infrastructure in a `terraform.tfstate` file. This is the "Source of Truth" for what actually exists in the cloud.
-*   **Plan & Apply**: The core workflow. `terraform plan` shows you what will happen, and `terraform apply` makes it happen.
+*   **Provider**: A plugin for one API, such as AWS, GCP, Kubernetes, or Cloudflare.
+*   **Resource**: Something Terraform creates and manages, such as a bucket.
+*   **Data source**: Something Terraform only reads, such as the latest AMI.
+*   **Module**: A reusable group of resources with inputs and outputs.
+*   **State**: A file that maps each block in the code to a real object ID. The real cloud is the truth. State is how Terraform knows which object a block means.
+*   **Plan and apply**: `plan` shows what will be created, changed, or destroyed. `apply` does it.
 
 ### 3. Real-World Usage
-*   **Multi-Cloud Strategy**: Using a single tool to manage resources across AWS and Google Cloud simultaneously.
-*   **Infrastructure Versioning**: Storing your infrastructure code in Git, allowing you to see exactly how your network setup has changed over the last 6 months.
-*   **Disaster Recovery**: Replicating an entire production environment in a different region within minutes by simply changing a variable and running `apply`.
-*   **Drift Detection**: Running a "Plan" regularly to see if someone manually changed a setting in the AWS console (Manual changes = "Drift").
+*   **One workflow for many APIs**: AWS, DNS, and monitoring in the same tool. The code is not portable between clouds; each provider has its own resources.
+*   **History**: Infrastructure changes are reviewed in pull requests and tracked in Git.
+*   **New environments**: The same modules with different variables create a new environment or region. Data must be restored separately.
+*   **Drift detection**: A scheduled `terraform plan -detailed-exitcode` returns exit code 2 when someone changed things by hand.
 
 ### 4. Tradeoffs
-*   **Declarative vs. Imperative**: You define the *end state* you want (Declarative), and Terraform figures out how to get there. This is easier than writing scripts (Imperative) but can be tricky when resource dependencies are complex.
-*   **State Management**: If the state file is lost or corrupted, Terraform "forgets" what it built, which can lead to orphaned resources or duplicate infrastructure.
-*   **HCL Learning Curve**: While powerful, HashiCorp Configuration Language (HCL) is another language to learn, though it's more readable than JSON or YAML for infrastructure.
+*   **Declarative**: You write the end state and Terraform works out the order. Some attribute changes force a replace (destroy and recreate), and the plan shows this.
+*   **State risk**: State must be stored remotely, locked, and backed up. If it is lost, Terraform forgets what it manages and resources must be imported again.
+*   **HCL limits**: Loops and conditions (`for_each`, `count`) are less flexible than a real programming language. Pulumi and CDK for Terraform use general-purpose languages.
 
 ### 5. When NOT to Use
-*   **One-off Experiments**: If you are just testing a single service for 10 minutes, clicking in the console is faster than writing HCL.
-*   **Highly Dynamic Resources**: If resources are being created and destroyed every few seconds (like serverless functions scaling), a specialized framework (like Serverless Framework or AWS SAM) might be better.
-*   **Small Teams with Zero Cloud Knowledge**: The overhead of managing state, backends, and locking might be too much for a team that only needs one server.
+*   **Quick experiments**: The console is faster for a short test. Delete it afterwards.
+*   **Runtime objects**: Pods, autoscaled instances, and per-user resources belong to the app or autoscaler, not Terraform.
+*   **App releases**: Deploy app versions with Helm, Argo CD, or a serverless tool. Terraform manages the platform under them.
 
 ### 6. Interview Focus
-*   **State Locking**: "Why is it important to use a remote backend with state locking?"
-    *   To prevent multiple engineers from running `apply` at the same time and corrupting the state.
-*   **Lifecycle**: "Explain what `prevent_destroy` or `create_before_destroy` does in a resource block."
-    *   prevent_destroy is used to prevent the accidental deletion of a resource. create_before_destroy is used to create a new resource before destroying the old resource to avoid downtime.
-*   **Refactoring**: "How do you move a resource from one module to another without Terraform trying to delete and recreate it?"
-    *   `terraform state mv` or `moved` blocks.
+*   **State locking**: "Why use a remote backend with locking?"
+    *   Two applies at once can overwrite each other's state. A lock makes the second one wait or fail.
+    *   A remote backend also shares state with the team and CI, encrypts it, and keeps old versions.
+    *   Examples: S3 (recent versions lock with `use_lockfile = true`; DynamoDB locking is the older way), GCS, Azure Blob, HCP Terraform.
+*   **Lifecycle**: "What do `prevent_destroy` and `create_before_destroy` do?"
+    *   `prevent_destroy` makes any plan that destroys the resource fail. Deleting the block removes the protection too.
+    *   `create_before_destroy` builds the replacement first, then deletes the old one. It fails if the name must be unique.
+*   **Refactoring**: "How do you move a resource without recreating it?"
+    *   Add a `moved` block (`from` and `to`). `terraform state mv` does the same by hand.
+    *   Related: `import` blocks adopt existing resources. `removed` blocks stop managing one without deleting it.
 
 ### 7. Common Mistakes
-*   **Secrets in State**: Committing the `terraform.tfstate` file to Git. State files often contain plain-text database passwords and API keys.
-*   **Monolithic State**: Putting your entire company's infrastructure in one big folder. This makes `plan` slow and increases the "Blast Radius" if a mistake is made.
-*   **Hardcoding Providers**: Not pinning provider versions, which can lead to breaking changes when HashiCorp releases a new version of the AWS provider.
+*   **Secrets in state**: State stores values in plain text, including generated passwords. Never commit it. `sensitive = true` hides a value from output, not from state.
+*   **One giant state**: Plans get slow and one mistake can hit everything. Split state by environment and component.
+*   **Unpinned versions**: Pin provider versions and commit `.terraform.lock.hcl`, or a new major version can change behavior.
+*   **Not reading the plan**: Missing a "must be replaced" on a database.
 
 ### Example
-
-#### 1. Define the Cloud Provider (AWS in this case)
-
-```terraform
-provider "aws" {
-  region = "us-east-1"
-}
-```
-
-#### 2. Define Infrastructure Resources (An S3 Bucket)
-```terraform
-resource "aws_s3_bucket" "example" {
-  bucket = "my-unique-bucket-name"
-}
-```
-
-#### 3. Output the Bucket URL
-```terraform
-output "bucket_url" {
-  value = aws_s3_bucket.example.bucket_domain_name
-}
-```
-
-#### For complete reference , here is the full terraform file to setup a simple web server
+Pinned provider, remote state with locking, and a web server whose AMI is looked up instead of hardcoded (AMI IDs differ by region and go stale).
 
 ```terraform
-provider "aws" {
-  region = "us-east-1"
-}
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
+  }
 
-resource "aws_instance" "example" {
-  ami           = "ami-0c55b159cbfafe1f0"
-  instance_type = "t2.micro"
-
-  tags = {
-    Name = "example-server"
+  backend "s3" {
+    bucket       = "example-terraform-state"
+    key          = "web/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
   }
 }
 
-output "instance_ip" {
-  value = aws_instance.example.public_ip
+provider "aws" {
+  region = "us-east-1"
+}
+
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"] # Canonical
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+  }
+}
+
+resource "aws_instance" "web" {
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = "t3.micro"
+  tags          = { Name = "example-server" }
+}
+
+output "instance_public_ip" {
+  value = aws_instance.web.public_ip
+}
+
+resource "aws_s3_bucket" "assets" {
+  bucket = "example-unique-bucket-name" # bucket names are global across AWS
+}
+
+output "bucket_domain_name" {
+  value = aws_s3_bucket.assets.bucket_domain_name
 }
 ```

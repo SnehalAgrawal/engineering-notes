@@ -1,36 +1,64 @@
 # JS Advanced Concepts: Memory & Optimization
 
 ### 1. Overview
-Advanced JavaScript development involves moving beyond building features to building *sustainable* and *performant* systems. This includes understanding the garbage collector to prevent memory leaks, optimizing user interactions with debouncing/throttling, and leveraging functional programming concepts to reduce side effects.
+Keeping memory flat in long sessions, limiting how often expensive handlers run, and writing small pure functions.
 
 ### 2. Key Concepts
-*   **Memory Leaks**: When objects are no longer needed but are still reachable from the "Root." (e.g., forgotten global variables, Uncleared timers, closures).
-*   **Garbage Collection (GC)**: V8 uses the "Mark-and-Sweep" algorithm. It starts from the root and marks all reachable objects; anything not marked is deleted.
-*   **Debounce**: Ensures a function is called only *after* a certain amount of time has passed since it was last called. (e.g., search-as-you-type).
-*   **Throttle**: Ensures a function is called at most *once* every X milliseconds. (e.g., scroll event handlers).
-*   **Higher-Order Functions**: Functions that take other functions as arguments or return them. (e.g., `map`, `filter`, `reduce`).
+*   **Memory leak**: Memory held by objects you no longer need, but that something still points to (a global, a timer, a listener, a closure).
+*   **Garbage collection in V8**: New objects go to a small "young" area that is cleaned often and fast. Objects that survive move to the "old" area, which is cleaned with mark-sweep and compaction. Much of the work runs in the background. V8 frees what is unreachable, so cycles are not a problem.
+*   **Debounce**: Run the function only after calls stop for N ms. Example: search box.
+*   **Throttle**: Run the function at most once every N ms. Example: scroll handler. For visual updates, `requestAnimationFrame` often works better.
+*   **Higher-order function**: A function that takes or returns a function. Examples: `map`, `filter`, `reduce`, `debounce`.
+*   **Pure function**: Same input gives the same output, and nothing else changes.
+*   **Currying**: Turn `f(a, b)` into `f(a)(b)`.
+*   **Memoization**: Cache results of a pure function by its arguments.
+*   **Composition**: `compose(f, g)(x)` means `f(g(x))`.
+*   **Factory function vs function factory**: The first returns an object (`createUser(name)`). The second returns a function (`makeMultiplier(2)`).
+*   **Event delegation**: One listener on a parent handles events from all its children, using `event.target`.
+
+```javascript
+function debounce(fn, delay) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+function throttle(fn, interval) {
+  let last = 0;
+  return function (...args) {
+    const now = Date.now();
+    if (now - last >= interval) {
+      last = now;
+      fn.apply(this, args);
+    }
+  };
+}
+```
 
 ### 3. Real-World Usage
-*   **Search UI**: Using **Debounce** (e.g., 300ms) on a search input to prevent firing 50 API requests while the user types "JavaScript."
-*   **Infinite Scroll**: Using **Throttle** on the `scroll` event to calculate pagination logic at most every 200ms, preventing jank.
-*   **Production Debugging**: Using `heap snapshots` in Chrome DevTools to find why an SPA's memory usage grows from 50MB to 500MB after the user navigates between pages.
-*   **Data Transformation**: Using **Functional Programming** to transform a messy API response into a clean UI model without mutating the original object.
+*   **Search box**: Debounce input (around 300 ms is common), so the API is called when the user pauses, not on every key.
+*   **Infinite scroll**: Throttle the scroll handler, or use `IntersectionObserver` and skip the handler.
+*   **Finding leaks**: In Chrome DevTools, take a heap snapshot, repeat an action a few times, take another, and compare. Growing counts and "Detached" DOM nodes point to the leak.
+*   **Shaping API data**: Turn a messy API response into a UI model with pure functions, without changing the original object.
 
 ### 4. Tradeoffs
-*   **Functional vs. Imperative**: Functional code is more predictable and easier to test, but it can be less performant in "Hot Loops" due to the creation of many temporary objects.
-*   **Debounce vs. Throttle**: Use Debounce for "Wait until stop"; use Throttle for "Fixed execution rate." Using the wrong one can lead to "UI Lag" or "API Spam."
-*   **Immutability**: Striving for 100% immutability (`Object.freeze`) is great for reliability but can cause performance issues in apps with massive state objects (like a 3D editor).
+*   **`map`/`filter` chains vs a `for` loop**: Chains are easier to read but create a new array at each step. In a measured hot loop, one `for` loop can be faster.
+*   **Debounce vs throttle**: Debounce can delay feedback for as long as events keep coming. Simple throttle (like the one above) can drop the last event.
+*   **Immutability**: Makes change detection and undo easy. Copying big objects on every change costs memory and GC time. `Object.freeze` is shallow.
 
 ### 5. When NOT to Use
-*   **In-Place Sorting**: For very large arrays (1M+ items), using immutable `.sort()` (which creates a copy) might crash the browser. Use the in-place `.sort()` but only after careful consideration.
-*   **Global Variables**: Never use `var` or declare variables without `let/const`. They attach to the `window` object and are the #1 cause of accidental memory leaks.
+*   **Copying large arrays on every change in hot code**: `[...arr]` and `toSorted()` copy everything. If you own the data, sorting in place is fine.
+*   **Globals by accident**: Assigning to an undeclared variable makes a global in sloppy mode. Top-level `var` in a classic script becomes a `window` property. Use `let`/`const` and ES modules.
 
 ### 6. Interview Focus
-*   **Leak Identification**: "You notice your React app slows down after navigating back and forth 10 times. How do you find the leak?" (Hint: Event listeners, Timers, or global Stores).
-*   **Implementation Logic**: "Write a basic `debounce` function from scratch."
-*   **Functional Thinking**: "How do you explain the concept of 'Purity' in functions and why it matters in a React/Redux environment?"
+*   **App gets slower after navigating back and forth**: Repeat the navigation, compare heap snapshots, then look for listeners, intervals, subscriptions, and caches that are never cleaned up.
+*   **Write `debounce`**: See above. Mention keeping `this` and arguments, leading vs trailing call, and a `cancel` method.
+*   **Why purity matters in React/Redux**: Reducers and render functions must be pure, so changes can be detected by reference and tested in isolation.
 
 ### 7. Common Mistakes
-*   **Forgotten Event Listeners**: Adding an event listener on `window` inside a component and not removing it in `componentWillUnmount` (or `useEffect` cleanup).
-*   **Closure Leaks**: Holding onto a reference to a large DOM element inside a closure, preventing the entire DOM tree from being garbage collected.
-*   **Improper Throttle Settings**: Setting a throttle time too high (e.g., 1000ms for a drag-and-drop), making the UI feel "broken" and laggy.
+*   **Listener not removed**: A `window` listener or `setInterval` added in a component with no `useEffect` cleanup.
+*   **Closure holding a DOM node**: Keeps a removed element and its whole subtree in memory.
+*   **Throttle interval too long**: For example 1000 ms on drag-and-drop makes the UI feel stuck.
+*   **Cache with no limit**: A memoize `Map` grows forever. Limit its size, or use a `WeakMap` when keys are objects.

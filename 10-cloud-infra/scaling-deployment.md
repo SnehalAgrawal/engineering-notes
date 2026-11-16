@@ -1,75 +1,68 @@
 # Deployment Strategies & Infrastructure Scaling
 
 ### 1. Overview
-Modern software delivery is about "Zero Downtime." For senior engineers, this involves designing deployment pipelines that can ship code safely without affecting users, and using automated infrastructure scaling to handle traffic fluctuations while maintaining cost efficiency.
+Deployment strategies let you ship new versions without downtime and limit the damage of a bad release. Autoscaling adds and removes capacity as traffic changes.
 
 ### 2. Key Concepts
-*   **Blue-Green Deployment**: Maintaining two identical production environments. One is live (Blue); the new version is deployed to Green. Traffic is switched instantly at the Load Balancer level.
-*   **Canary Deployment**: Releasing a new version to a small percentage (e.g., 5%) of users first. If metrics look good, it's rolled out to everyone.
-*   **Auto-Scaling**:
-    *   *Horizontal Pod Autoscaler (HPA)*: Adding more pods based on CPU/RAM usage.
-    *   *Cluster Autoscaler*: Adding more physical nodes/VMs when there is no room for more pods.
-*   **CI/CD**:
-    *   *Continuous Integration*: Automating the build and test process.
-    *   *Continuous Deployment*: Automatically shipping every "passing" change to production.
+*   **Rolling update**: Replace old instances with new ones a few at a time. The Kubernetes default.
+*   **Recreate**: Stop all old Pods, then start new ones. Causes downtime, but two versions never run together.
+*   **Blue-green**: Two full environments. Blue serves traffic, Green gets the new version, then traffic switches. Switching back is the rollback.
+*   **Canary**: Send a small share of traffic to the new version, compare its errors and latency with the old one, then increase the share. Argo Rollouts and Flagger automate this.
+*   **HPA (Horizontal Pod Autoscaler)**: Changes the number of Pods to keep a metric near a target. The metric can be CPU or memory use as a percentage of the Pod's requests, or a custom metric.
+*   **VPA (Vertical Pod Autoscaler)**: Suggests or sets CPU and memory requests.
+*   **Cluster Autoscaler / Karpenter**: Adds a node when Pods are stuck Pending because no node has room for their requests. Removes empty or underused nodes. It looks at requests, not real usage.
+*   **CI/CD**: CI builds and tests every change. Continuous delivery keeps every build ready to release. Continuous deployment also releases it automatically.
+*   **Pipeline stages**: Build, unit tests, integration tests, end-to-end tests, security scan, deploy. Common tools: GitHub Actions, GitLab CI, Jenkins, Azure Pipelines, Google Cloud Build.
+*   **Pipeline secrets**: Keep deploy credentials in the CI tool's secret store or a vault, or use short-lived OIDC tokens instead of long-lived cloud keys.
 
 ### 3. Real-World Usage
-*   **Risk Mitigation**: Using **Canary Deployments** for a major database migration to ensure that if something breaks, only 1% of users are affected.
-*   **Fast Rollback**: Using **Blue-Green** to roll back a "Breaking UI" change in seconds just by flipping a traffic switch.
-*   **Demand Spikes**: An e-commerce site using **Auto-scaling** to go from 5 servers at midnight to 100 servers during a "Flash Sale" at 9 AM.
-*   **Quality Gates**: A CI/CD pipeline that requires 90% test coverage and a successful "Security Scan" before code can be merged to `main`.
+*   **Risky release**: A canary shows the new version to a small slice of traffic first.
+*   **Fast rollback**: With blue-green the old version is still running, so rollback is a traffic switch.
+*   **Sales peak**: Scale up on a schedule before a known peak, and let metric-based scaling handle the rest.
+*   **Quality gates**: Tests, a security scan, and review must pass before deploy.
 
 ### 4. Tradeoffs
-*   **Blue-Green vs. Canary**: Blue-Green is faster to switch but twice as expensive (requires double the infrastructure). Canary is cheaper but takes longer to "Prove" stability.
-*   **Auto-scaling Lag**: It takes time (minutes) to boot new VMs or pods. If your traffic spikes in seconds (e.g., a Super Bowl ad), auto-scaling might be too slow. You need "Pre-warming."
-*   **CD vs. Manual Approval**: Full Continuous Deployment is the goal, but for highly regulated industries (Banking/Medical), manual "Human-in-the-loop" approval is often a compliance requirement.
+*   **Blue-green vs. canary**: Blue-green is the fastest to switch and roll back but needs double capacity during the cutover. Canary needs less capacity but takes longer and needs good metrics.
+*   **Scaling lag**: New Pods take seconds to start, new nodes take minutes. For sudden spikes, scale ahead on a schedule or keep spare capacity.
+*   **Manual approval**: Automatic deploys give faster feedback. Regulated industries often require a recorded human approval.
 
 ### 5. When NOT to Use
-*   **Blue-Green for Databases**: Blue-Green is great for stateless apps, but managing two versions of a 10TB database in sync during a deployment is a recipe for data corruption. Use "Expand/Contract" migrations instead.
-*   **Auto-scaling for Tiny Apps**: If you only have 2 servers, the overhead of setting up and monitoring auto-scaling rules is likely higher than the cost savings.
+*   **Blue-green for the database**: Keeping two large databases in sync is risky. Keep one database and make schema changes backward compatible: add the new column, migrate, then remove the old one later (expand/contract).
+*   **Autoscaling a tiny, steady app**: Two servers with flat traffic do not need it.
 
 ### 6. Interview Focus
-*   **Rolling Updates**: "Explain how Kubernetes performs a 'Rolling Update.' What happens to active user connections?"
-    * **The Concept**: "Rolling Update" is the default strategy for updating a Deployment in Kubernetes. Instead of taking down all old pods at once (which would cause downtime), it gradually replaces them.
-    * **The Process**:
-        1.  **Configuration**: You define the `maxUnavailable` (e.g., 1) and `maxSurge` (e.g., 1) in your Deployment manifest.
-        2.  **Start New**: Kubernetes starts one (or more) *new* pods with the new image version.
-        3.  **Wait for Readiness**: It waits for the new pod(s) to pass their `Readiness Probes` (health checks). This ensures the new version is actually ready to accept traffic.
-        4.  **Terminate Old**: Once the new pod is ready, it terminates one of the *old* pods.
-        5.  **Repeat**: It repeats this cycle (New -> Ready -> Terminate Old) until all old pods are gone and only new pods remain.
-    * **Handling Active Connections**:
-        * **Graceful Shutdown**: When a pod is marked for termination, Kubernetes sends a `SIGTERM` signal to the application container.
-        * **The Grace Period**: The application has a `terminationGracePeriodSeconds` (default 30 seconds) to finish processing any in-flight requests and shut down cleanly.
-        * **The Switch**: The Service load balancer stops sending traffic to the old pod as soon as it starts shutting down.
-        * **The Result**: If your application is well-behaved (handles `SIGTERM` correctly), active connections are drained gracefully, and users don't experience errors. If the app ignores `SIGTERM`, those specific connections might be dropped.
-*   **Failover Logic**: "Design a deployment pipeline for a business-critical API. How do you handle 'Rollbacks' automatically?"
-    * **The "Undo" Button**: A rollback is triggered when a new deployment fails or causes errors. Kubernetes stores a history of previous revisions for each Deployment.
-    * **Automatic Rollback (The Safety Net)**: In Kubernetes, you can configure `Recreate` or `Rolling` strategies. For a business-critical API, you should use a `RollingUpdate` with strict `Readiness Probes`.
-    * **The Scenario**: Let's say you have 5 pods. You update the image. 
-        1.  New Pod 1 starts. If it fails its Health Check, Kubernetes **stops** the rollout immediately. It does not touch the other 4 old pods.
-        2.  **Automatic Rollback**: Because the new version is unhealthy, the Deployment Controller automatically reverts the change. It keeps the old Pods and kills the new one(s) that failed to start.
-    * **Manual Rollback (The "I want to go back to V1")**:
-        * If the new version *seems* okay initially but starts failing later (e.g., a slow memory leak), the auto-rollback might not trigger.
-        * You manually trigger a rollback using: `kubectl rollout undo deployment/my-api`.
-        * **What happens?**: Kubernetes looks at the revision history and re-applies the YAML configuration of the previous version (e.g., Revision 3). It then performs another "Rolling Update" to replace the bad version (V4) with the old good version (V3).
-*   **Auto-scaling Metrics**: "Besides CPU and RAM, what are other 'Business Metrics' you could use to trigger auto-scaling?" (Hint: Request Queue Depth, Messages in SQS).
-    * **The Standard (Why CPU/RAM aren't enough)**:
-        * **The Problem**: Your CPU might be at 100%, but if your application is "I/O Bound" (waiting for the database), adding more CPU won't help. Conversely, you could have low CPU usage but be getting hammered with requests (High Latency).
-    * **Business Metrics for Scaling**:
-        1.  **Queue Depth (The "Backlog" Metric)**:
-            * **For Background Workers**: If you use a Queue (like RabbitMQ, Kafka, or SQS), the number of messages waiting in the queue is the *perfect* indicator of load.
-            * **Logic**: If `QueueDepth > 1000`, scale up. If `QueueDepth < 100`, scale down.
-        2.  **Request Latency (The "User Experience" Metric)**:
-            * **The Logic**: If the 95th percentile latency (p95) goes above your SLA (e.g., > 200ms), the system is slow. Trigger scaling immediately.
-        3.  **Active Connections / Concurrent Users**:
-            * **The Logic**: Some platforms (like connection-pooled apps) have a hard limit on concurrent connections. If `Connections > 80% of Max`, scale up.
-        4.  **Custom Business Metrics (The "Sales" Metric)**:
-            * **The Logic**: E-commerce sites often scale based on "Items Added to Cart" or "Completed Orders" (e.g., "Scale up if we are processing > 100 orders per minute"). This is the most accurate but hardest to implement.
-    * **Implementation (KEDA)**:
-        * For Kubernetes, the standard way to do this is using **KEDA** (Kubernetes Event-Driven Autoscaling).
-        * KEDA can connect directly to SQS, Kafka, RabbitMQ, etc., and scale your pods from 0 to N based on the queue depth, without needing CPU metrics.
+*   **Rolling updates**: "How does a Kubernetes rolling update work, and what happens to open connections?"
+    *   A new Pod template creates a new ReplicaSet. Kubernetes scales it up and the old one down in steps.
+    *   `maxSurge` is how many extra Pods are allowed. `maxUnavailable` is how many may be missing. Both default to 25%.
+    *   A new Pod counts only after its readiness probe passes.
+    *   When an old Pod is deleted, two things start at the same time: it is removed from the Service endpoints, and it gets `SIGTERM`. Load balancers take a moment to notice, so requests can still arrive after the app stops.
+    *   Fix: a short `preStop` sleep, then on `SIGTERM` stop taking new requests, finish the current ones, and exit.
+    *   Everything must finish within `terminationGracePeriodSeconds` (default 30s). After that the container gets `SIGKILL`.
+    *   `SIGTERM` goes to PID 1. A shell-form `CMD node server.js` runs under `sh`, which may not pass the signal on. Use `CMD ["node", "server.js"]` or an init like `tini`.
+    *   WebSockets and other long connections are cut, so clients must reconnect.
+*   **Rollbacks**: "How do you roll back automatically?"
+    *   Kubernetes does not roll back by itself. If new Pods never become ready, the rollout just stalls.
+    *   After `progressDeadlineSeconds` (default 600s) the Deployment reports `ProgressDeadlineExceeded`.
+    *   Set `maxUnavailable: 0` for critical services, so no old Pod is removed before a new one is ready.
+    *   The pipeline runs `kubectl rollout status --timeout=...` and calls `kubectl rollout undo` if it fails. Helm 3 has `helm upgrade --atomic`.
+    *   Slow failures, like a memory leak, pass readiness. Catch them with SLO alerts or canary analysis.
+    *   With GitOps, also revert the commit, or the tool reapplies the bad version.
+*   **Scaling signals**: "What can you scale on besides CPU?"
+    *   Queue depth or consumer lag, for workers. This is the most direct measure of backlog.
+    *   Requests per second per Pod, for services with steady cost per request.
+    *   Active connections, for WebSocket or connection-limited servers.
+    *   Business events such as orders per minute, when load follows the business.
+    *   Latency, with care. If a shared database is the slow part, more Pods make it worse.
+    *   KEDA reads queues and other event sources, feeds the HPA, and can scale to zero.
+
+```bash
+kubectl rollout status deployment/<name> -n <namespace>
+kubectl rollout history deployment/<name> -n <namespace>   # CHANGE-CAUSE comes from the kubernetes.io/change-cause annotation
+kubectl rollout undo deployment/<name> -n <namespace>      # add --to-revision=<n> for a specific revision
+```
 
 ### 7. Common Mistakes
-*   **Missing Health Checks**: Doing a deployment but not waiting for the "Readiness Probe" to pass before killing the old version, causing a total outage (The "Deployment Cliff").
-*   **Ignoring Database Compatibility**: Deploying Code V2 that expects a DB column that hasn't been added yet. Deployments must be "Backward Compatible."
-*   **Over-scaling**: Setting auto-scaling limits too high without a budget cap, leading to a $50,000 AWS bill on a single Friday night.
+*   **No readiness probe**: Old Pods are removed before new ones can serve.
+*   **Incompatible versions**: During a rollout old and new code run together. New code must not need a column that does not exist yet, and old code must not lose one it reads.
+*   **`replicas` fighting the HPA**: A manifest with a fixed `replicas` resets the HPA on every deploy. Leave `replicas` out when an HPA manages the Deployment.
+*   **No upper limit**: Set `maxReplicas`, node pool limits, and budget alerts so a spike or retry storm does not create a huge bill.

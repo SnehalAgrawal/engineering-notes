@@ -1,42 +1,45 @@
-# Senior & Lead Engineering Interview Knowledge Base
+# Engineering Notes
 
-A high-quality, structured, and non-redundant knowledge base designed for preparing for Senior, Lead, and Staff Software Engineering interviews. This repository focuses on distributed systems, architecture, backend internals, and leadership principles.
+Study notes on software engineering, kept as cheatsheets: design, distributed systems, databases, backend, JavaScript, Python, infrastructure, observability, AI systems, and engineering leadership. They were first written to prepare for senior and lead engineering interviews and are kept for revision.
 
-## 🚀 Navigation
+They are notes, not a textbook: short, focused on trade-offs and on the questions interviewers ask, and not exhaustive.
 
-The primary entry point for this repository is the **[preparation-content.md](./preparation-content.md)** file.
+## How to use them
 
-This file acts as an interactive index:
-1.  **Clickable Topics**: Every topic in the index links directly to a deep-dive markdown file.
-2.  **Study Tracker**: Use the checkboxes `[ ]` to track your progress as you master each topic.
+Start with the index, [preparation-content.md](preparation-content.md). It lists every topic, links each one to its note, and has a checkbox per topic to track what you have revised (fork the repository or copy the file to tick your own).
 
-## 📁 Repository Structure
+Most notes follow the same outline:
 
-The knowledge base is organized into 14 core categories:
+- **Overview**: the idea in a few lines
+- **Key concepts**: the terms and mechanisms to know
+- **Real-world usage**: where it shows up in production systems
+- **Tradeoffs** and **when not to use it**
+- **Interview focus**: typical questions, with the points a strong answer covers
+- **Common mistakes**
 
-1.  **[1-lld](./1-lld/)**: Low-Level Design (OOP, SOLID, Clean Code).
-2.  **[2-design-patterns](./2-design-patterns/)**: Creational, Structural, Behavioral, and Cloud-Native patterns.
-3.  **[3-hld](./3-hld/)**: High-Level Design fundamentals, Architectures, and System Design Frameworks.
-4.  **[4-distributed-systems](./4-distributed-systems/)**: Core concepts, Consistency models, and Reliability patterns.
-5.  **[5-database-design](./5-database-design/)**: SQL/NoSQL deep dives, Scaling, and Caching.
-6.  **[6-backend-engineering](./6-backend-engineering/)**: Gateways, Security, Performance, and Testing Strategies.
-7.  **[7-javascript](./7-javascript/)**: Internals, Event Loop, Advanced Patterns, and Node.js.
-8.  **[8-python](./8-python/)**: Core, Advanced features, Internals, and Concurrency.
-9.  **[9-concurrency](./9-concurrency/)**: OS-level concurrency fundamentals.
-10. **[10-cloud-infra](./10-cloud-infra/)**: Containers, Kubernetes, and Scaling/Deployment strategies.
-11. **[11-observability](./11-observability/)**: Monitoring, Metrics, Tracing, and Incident Management.
-12. **[12-modern-systems](./12-modern-systems/)**: AI Agentic Systems, RAG, and Vector Databases.
-13. **[13-core-fundamentals](./13-core-fundamentals/)**: DSA for Seniors, OS, Networking, and Security.
-14. **[14-leadership-and-behavioral](./14-leadership-and-behavioral/)**: Behavioral interview frameworks (STAR), ADRs, and People Leadership.
+## Sections
 
-## 💡 Content Philosophy
+| Folder | What it covers |
+|---|---|
+| [1-lld](1-lld/) | Low-level design: OOP, SOLID, dependency injection, clean code |
+| [2-design-patterns](2-design-patterns/) | Creational, structural, behavioral, and cloud-native patterns; UI architecture patterns |
+| [3-hld](3-hld/) | High-level design: a system design framework, architecture styles, API design, cost, and worked examples |
+| [4-distributed-systems](4-distributed-systems/) | Consistency models, consensus and coordination, messaging, stream processing, data pipelines, reliability patterns |
+| [5-database-design](5-database-design/) | SQL internals, NoSQL data stores, scaling databases, caching |
+| [6-backend-engineering](6-backend-engineering/) | Async systems, gateways and security, performance, testing strategies |
+| [7-javascript](7-javascript/) | Fundamentals, TypeScript, internals, the event loop, Node.js, frontend patterns |
+| [8-python](8-python/) | Core language, advanced features, internals, concurrency |
+| [9-concurrency](9-concurrency/) | Threads and processes, locks and semaphores, race conditions and deadlocks |
+| [10-cloud-infra](10-cloud-infra/) | Docker and Kubernetes, scaling and deployment, Helm, Terraform, NGINX, WebSockets, cloud services |
+| [11-observability](11-observability/) | Logs, metrics, traces, OpenTelemetry, SLOs and error budgets |
+| [12-modern-systems](12-modern-systems/) | AI systems: LLM basics, RAG, vector databases, agents |
+| [13-core-fundamentals](13-core-fundamentals/) | Data structures and algorithms, operating systems and networking, security, an engineering toolbox |
+| [14-leadership-and-behavioral](14-leadership-and-behavioral/) | Execution, incident management, leadership, behavioral interviews |
 
-Every file in this repository follows a consistent structure to ensure maximum value for senior candidates:
+## Corrections
 
-*   **Overview**: Concise high-level summary.
-*   **Key Concepts**: Essential technical pillars.
-*   **Real-World Usage**: How these concepts are applied in production systems (e.g., Netflix, Uber, AWS).
-*   **Tradeoffs**: The "It Depends" analysis critical for senior interviews.
-*   **When NOT to Use**: Identifying anti-patterns and constraints.
-*   **Interview Focus**: Scenarios and questions specifically designed for advanced candidates.
-*   **Common Mistakes**: Pitfalls that separate junior from senior engineers.
+Found a mistake, or something that has gone out of date? [Open an issue](https://github.com/SnehalAgrawal/learning-material/issues) naming the file and what is wrong; a link to a source helps.
+
+## Licence
+
+The notes are licensed under [Creative Commons Attribution 4.0 International (CC BY 4.0)](LICENSE). You may share and adapt them, including commercially, as long as you credit Snehal Agrawal and link to this repository.

@@ -1,37 +1,44 @@
 # Backend Security: AuthN, AuthZ, & API Gateways
 
 ### 1. Overview
-Secure backend engineering is about building multiple layers of defense. For senior engineers, this involves understanding the difference between "Who are you?" (Authentication) and "What are you allowed to do?" (Authorization), and using an API Gateway as a centralized gatekeeper for the entire system.
+Backend security has layers. Authentication: who is calling? Authorization: may they do this to this resource? An API gateway applies shared checks at the edge, but each service still checks what it relies on.
 
 ### 2. Key Concepts
-*   **Authentication (AuthN)**: Identifying the user (Passwords, SSO/OAuth2, MFA).
-*   **Authorization (AuthZ)**: Permission management.
-    *   *RBAC*: Role-Based Access Control (e.g., "Admin", "User").
-    *   *ABAC*: Attribute-Based Access Control (e.g., "Allow if user is owner AND time is before 5PM").
-*   **JWT (JSON Web Tokens)**: Stateless, self-contained tokens used to pass user identity between microservices.
-*   **API Gateway**: A single entry point that handles Request Routing, Auth, Rate Limiting, and SSL Termination.
+*   **Authentication (AuthN)**: Proving identity: passwords, SSO, MFA, client certificates.
+*   **Authorization (AuthZ)**: Deciding what an identity may do.
+    *   *RBAC*: Permissions by role, e.g., "admin", "editor".
+    *   *ABAC*: Rules on attributes, e.g., "owner of the document and on a company laptop".
+*   **JWT**: A signed token with claims (user, expiry, audience). A service can check it without a database call, so it is often used to pass user identity between services.
+*   **API gateway**: One entry point for routing, auth checks, rate limits, and TLS termination.
 
 ### 3. Real-World Usage
-*   **OAuth2 / OIDC**: Using Google/GitHub SSO to authenticate users without storing passwords in your own database.
-*   **Resource Protection**: A `PostService` that checks if the `user_id` in the JWT matches the `author_id` of the post before allowing an `UPDATE` (ABAC).
-*   **Cross-Cutting Concerns**: Using an **API Gateway (Kong, AWS API Gateway, NGINX)** to reject unauthorized requests. See [Reliability Patterns](../4-distributed-systems/reliability-patterns.md) for rate-limiting algorithms.
-*   **Internal Security**: Using "mTLS" (Mutual TLS) between microservices to ensure that Service A can ONLY talk to Service B.
+*   **SSO with OIDC**: Users sign in through Google or another provider; the app stores no passwords.
+*   **Ownership check**: Allow editing a post only if the token's user ID equals the post's `author_id`.
+*   **Edge checks**: A gateway (Kong, AWS API Gateway, NGINX) rejects unauthenticated or over-limit calls. See [Reliability Patterns](../4-distributed-systems/reliability-patterns.md) for rate limiting.
+*   **Service to service**: mTLS (both sides show certificates) proves each service's identity. Separate policies decide which service may call which.
 
 ### 4. Tradeoffs
-*   **Stateless (JWT) vs. Stateful (Sessions)**: JWTs are easy to scale horizontally but impossible to "Revoke" instantly if a user's account is compromised (unless you add a blacklist/DB check, making it stateful again).
-*   **Gateway Centralization**: API Gateways simplify architecture but become a "Single Point of Failure" and can introduce unneeded latency if not tuned correctly.
-*   **RBAC vs. ABAC**: RBAC is simple to implement but brittle for complex business rules. ABAC is extremely flexible but much harder to audit and slow to evaluate.
+*   **JWT vs. sessions**: JWTs need no session store, but a token stays valid until it expires unless you add server-side state (a denylist). Common fix: short-lived access tokens plus revocable refresh tokens.
+*   **Gateway**: One place for shared checks, but every request depends on it. Run several instances; each plugin adds latency.
+*   **RBAC vs. ABAC**: RBAC is simple but needs many roles for fine rules. ABAC is flexible but harder to audit.
 
 ### 5. When NOT to Use
-*   **JWT for Web Apps**: If you don't have multiple domains/microservices, standard Secure HttpOnly Sessions are often safer and easier to manage than JWTs in LocalStorage (XSS risk).
-*   **Complex Gateway Logic**: Avoid putting business logic in the API Gateway. It should only handle infrastructure concerns (Routing, Auth, Rate Limiting).
+*   **JWT for one web app**: With one backend, use a server session in a `Secure`, `HttpOnly`, `SameSite` cookie. Easier to revoke. Tokens in `localStorage` can be stolen by XSS.
+*   **Business logic in the gateway**: Keep it to routing, auth, and rate limits.
 
 ### 6. Interview Focus
-*   **The Invalidation Problem**: "A user's laptop is stolen. How do you invalidate their active JWTs immediately?"
-*   **Security Vulnerabilities**: "Explain CSRF (Cross-Site Request Forgery) and how to prevent it."
-*   **OAuth Flows**: "Which OAuth2 flow should a React SPA (Single Page App) use vs. a Backend-to-Backend service?" (Hint: Authorization Code with PKCE vs. Client Credentials).
+*   **Stolen laptop**: "How do you kill a user's tokens now?"
+    * Revoke their refresh tokens.
+    * Bump a per-user token version that every request checks, or denylist token IDs until they expire.
+    * Keep access tokens short-lived.
+*   **CSRF**: "What is it and how do you stop it?"
+    * Another site makes the browser send a request with the user's cookies.
+    * Defenses: `SameSite` cookies, CSRF tokens, checking the `Origin` header, no state changes on `GET`.
+*   **OAuth flows**: "Browser SPA vs. backend-to-backend?"
+    * SPA: Authorization Code with PKCE.
+    * Backend service: Client Credentials.
 
 ### 7. Common Mistakes
-*   **Storing Secrets in Frontend**: Putting API keys or JWT signing secrets in the frontend code.
-*   **IDOR (Insecure Direct Object Reference)**: Authenticating a user but failing to authorize them (e.g., a user can access `GET /api/orders/999` just by changing the ID in the URL).
-*   **JWT without Verification**: Passing a JWT between services and assuming it's valid without checking the signature against the public key.
+*   **Secrets in the frontend**: Anyone can read API keys or signing secrets shipped to the browser.
+*   **IDOR**: The user is logged in but ownership isn't checked, so changing `/orders/999` to another ID shows someone else's order.
+*   **Unverified JWTs**: Always check the signature, pin the expected algorithm, and check `exp`, `iss`, and `aud`.

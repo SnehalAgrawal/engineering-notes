@@ -1,134 +1,88 @@
 # API Design & Internal Contracts
 
 ### 1. Overview
-API design is about creating stable, predictable interfaces for others to consume. For senior engineers, it involves choosing the right protocol (REST, GraphQL, gRPC), managing versioning to avoid breaking changes, and ensuring reliability through idempotency.
+An API is a contract other teams and clients depend on. Good API design means picking the right protocol, changing the API without breaking clients, and making requests safe to retry.
 
 ### 2. Key Concepts
-*   **REST**: Resource-based, using standard HTTP verbs (GET, POST, etc.). Best for public APIs.
-*   **GraphQL**: Query language for your API. Client specifies exactly what data it needs. Reduces over-fetching.
-*   **Versioning**: Strategic approach to API evolution (URI versioning `/v1/`, Header-based versioning).
-*   **Idempotency**: An operation that can be performed multiple times without changing the result beyond the initial application (crucial for retries).
-*   **Rate Limiting / Throttling**: Protecting the API from abuse and ensuring fair usage.
+*   **REST**: URLs name resources; HTTP methods act on them. Works everywhere, easy to cache. The default for public APIs.
+*   **GraphQL**: The client asks for exactly the fields it needs in one request. Less over-fetching, more work on the server.
+*   **gRPC**: Binary messages (Protocol Buffers) over HTTP/2, with generated clients and streaming. Good for service-to-service calls.
+*   **Versioning**: How you ship breaking changes while old clients keep working (`/v1/`, a header, or a query parameter).
+*   **Idempotency**: Sending the same request twice has the same effect as once. GET, PUT, DELETE are idempotent. POST needs an idempotency key.
+*   **Rate limiting**: Caps how many requests a client can send per period.
 
 ### 3. Real-World Usage
-*   **Public Dev Platform (Stripe/Twilio)**: Using REST with clean versioning and extensive documentation to guide external developers.
-*   **Mobile Apps**: Using GraphQL to fetch nested data (e.g., a "Post" with "Comments" and "Author Details") in a single round-trip over a slow cellular network.
-*   **High-Perf Microservices**: Using **gRPC** (Protocol Buffers) for internal service-to-service communication to reduce serialization overhead and leverage bi-directional streaming.
-*   **Payments**: Every `POST /payments` request includes an `Idempotency-Key` header so that a retried network failure doesn't charge the user twice.
+*   **Public APIs**: Payment APIs like Stripe use REST with clear versions and docs.
+*   **Mobile apps**: GraphQL fetches a post, its comments, and the author in one round-trip.
+*   **Internal services**: gRPC for typed, fast calls.
+*   **Payments**: Each `POST /payments` sends an `Idempotency-Key` header so a retry doesn't charge twice.
 
 ### 4. Tradeoffs
-*   **GraphQL Complexity**: Flexible queries are a dream for frontend but a "N+1" query nightmare for the backend and hard to cache at the CDN level.
-*   **Versioning Fatigue**: Maintaining multiple API versions (`v1`, `v2`, `v3`) increases maintenance cost but provides the best user experience for consumers.
-*   **REST vs. gRPC**: REST is human-readable and works anywhere; gRPC is binary, faster, but requires specialized clients and is harder to debug with a simple browser.
+*   **GraphQL**: Flexible for clients, but nested queries can cause many DB calls (the N+1 problem) and are hard to cache at a CDN.
+*   **Versioning**: Each live version is code to maintain. Prefer adding fields over new versions.
+*   **REST vs. gRPC**: REST is readable and works in any browser. gRPC is faster and typed but needs generated clients and a proxy for browsers.
 
 ### 5. When NOT to Use
-*   **GraphQL**: Don't use if your data is highly relational and public-facing with simple access patterns. The security risk of malicious complex queries is high.
-*   **gRPC**: Avoid for public-facing web APIs where standard browser support is required without extra proxies like `grpc-web`.
+*   **GraphQL**: A simple CRUD API with one client, or a public API where HTTP caching matters and you can't build query cost limits.
+*   **gRPC**: Public browser-facing APIs.
 
 ### 6. Interview Focus
-*   **Contract Design**: "Design an API for a YouTube-like service. How do you handle pagination, video uploading, and partial updates to metadata?"
-    * Pagination: Use cursor-based (e.g., `next_cursor`) for infinite scroll, offset-based for fixed pages. Limit defaults to 20-50, max 100-200.
-    * Video Upload: Multi-step process: 1) Initiate (get upload URL), 2) Upload (direct to S3/GCS), 3) Notify (webhook when done), 4) Transcode (background job), 5) Publish.
-    * Partial Updates: Use PATCH with JSON Patch (RFC 6902) for structured updates, or field-level filtering if simpler. Avoid PUT for partial updates.
-    * GraphQL: Return nested data (video + channel + comments) in single query, use DataLoader to batch database calls and prevent N+1.
-*   **Reliability**: "A user clicks 'Pay' twice. How do you ensure the transaction only happens once? Explain Idempotency-Key implementation."
-    * Use idempotency keys: client sends unique key per request, server stores and checks it before processing.
-    * Implementation: use Redis or DB to store key → response mapping for short TTL (e.g., 24 hours).
-    * Example flow: check key → if exists, return cached response; if not, process, store result, return.
-    * Handle race conditions with pessimistic locks or atomic operations.
-*   **Evolution**: "How do you deprecate a field in an API currently used by 100,000 active clients?"
-    * Deprecation strategy:
-        * Deprecate with warning header: "Field X is deprecated, will be removed in 3 months"
-        * Stop returning the field in new responses (but don't delete it yet)
-        * Allow reads but ignore writes for deprecated fields
-        * Monitor usage via logs/metrics
-        * Set a firm removal date
-        * Remove only after significant traffic drop
-    * Provide migration path (new field, alternate endpoint)
-    * Communicate clearly with clients (blog post, deprecation guide)
-    * Offer migration window (3-6 months typical)
-*   **Designing for Scale**: "How do you design a Twitter feed service that handles 1M writes/sec and 10M reads/sec?"
-    * Architecture: Fan-out on write (push model) for active users, fan-out on read (pull model) for celebrities/inactive users.
-    * Storage: Separate hot (Redis/memcached for recent tweets) and cold (Cassandra/DynamoDB for timeline storage).
-    * Redis: Maintain per-user timeline caches (e.g., last 500 tweets). Use sorted sets for O(log N) adds/retrieves.
-    * Cassandra: Partition by user_id (or user_id + timestamp for time-based retrieval). Replication across availability zones.
-    * Fan-out on write: When user tweets, push to timelines of all followers (async via message queue).
-    * Fan-out on read: For celebrities (1M+ followers), don't push; merge their tweets into user timelines at read time.
-    * Hybrid approach: Push for 99% of users, fan-out on read for top 1% (celebrities).
-    * Caching: Aggressive caching at multiple layers (CDN, Redis, in-memory).
-    * Monitoring: Track write/read throughput, cache hit rates, fan-out latency, queue depth.
-    * Rate limiting: Implement per-user rate limits on tweets, follows, etc.
-*   **Real-time vs. Batch**: "When to use real-time APIs (WebSockets/SSE) vs. batch APIs?"
-    * Real-time (WebSockets/SSE): Use for live notifications, chat, stock tickers, collaborative editing where low latency (<200ms) and continuous updates are critical.
-    * Batch APIs: Use for bulk operations (e.g., monthly billing, data exports), periodic syncs, non-urgent updates. Simpler to implement, easier to rate limit, more fault-tolerant.
-    * Hybrid: Use batch for base data sync, real-time for delta updates and events.
-*   **Rate Limiting Strategy**: "How would you implement rate limiting for a public API?"
-    * Token bucket algorithm: 
-        * Each user has a bucket that refills at a constant rate (e.g., 100 tokens/minute).
-        * Each request consumes tokens (e.g., 1 token/request).
-        * If bucket is empty, reject (429 Too Many Requests).
-    * Implementation: 
-        * Use Redis with atomic operations (INCR/EXPIRE) to store token counts per user/API key.
-        * Set sliding window (last N minutes) or fixed window (per calendar minute).
-    * Tiers: Free tier (100/min), Pro (1000/min), Enterprise (10000/min).
-    * Burst capacity: Allow brief bursts above average rate (e.g., 2x average) to handle traffic spikes.
-    * Local vs. Global: For distributed systems, use centralized Redis to track global counts across all instances.
-    * Error handling: Return 429 with Retry-After header indicating when client can retry.
-*   **Designing for GraphQL**: "How would you handle N+1 queries in a GraphQL API?"
-    * Use DataLoader pattern: 
-        * Batch multiple requests into single database query (e.g., fetch 100 user_ids in one query instead of 100 separate queries).
-        * Implement caching per batch to avoid duplicate work.
-        * Use memoization to cache results within a single request.
-    * Query cost analysis: Assign "cost" to fields based on complexity (e.g., deep joins cost more). Enforce total cost limit per request.
-    * Field-level batching: Group identical field requests across the query tree and resolve them together.
-    * Persisted queries: Allow clients to use pre-defined query IDs to avoid sending query strings, reducing parsing overhead.
-    * Query complexity analysis: Reject queries that exceed complexity thresholds (e.g., max depth, max nodes).
-*   **Designing for REST**: "How would you design a REST API for a URL shortener like TinyURL?"
-    * Resources: 
-        * `POST /shorten`: Create a new short URL (request: original URL; response: short_code, full_url)
-        * `GET /{short_code}`: Redirect to original URL
-        * `DELETE /{short_code}`: Delete a short URL (admin only)
-        * `GET /analytics/{short_code}`: Get click stats
-    * Unique constraints: short_code must be unique; use collision detection with random suffix generation
-    * Redirection: 301 (permanent) vs 302 (temporary) based on request parameter
-    * Expiration: TTL on short URLs (e.g., 30 days) for cleanup
-    * API versioning: `/v1/shorten`, `/v1/analytics`
-    * Error codes: 400 (invalid URL), 404 (not found), 409 (collision), 429 (rate limit), 500 (server error)
-    * Idempotency: `POST /shorten` with `Idempotency-Key` header to handle retries
-    * Caching: Cache redirects at CDN (301) and application level
-*   **Versioning Strategies**: "Compare URI versioning vs. Header versioning vs. Content versioning"
-    * URI versioning (`/v1/resource`): 
-        * Pros: Simple, explicit, cacheable per version, easy to route
-        * Cons: Pollutes URI namespace, hard to manage many versions
-    * Header versioning (`Accept: application/vnd.api.v1+json`): 
-        * Pros: Cleaner URIs, version in metadata
-        * Cons: Harder to cache (requires custom cache key), tooling support varies
-    * Content versioning (`?version=1`): 
-        * Pros: Easy to implement, no URI pollution
-        * Cons: Query params affect cache keys, can't version file-based resources
-    * Hybrid: URI version for major breaking changes, header for minor changes
-    * Recommendation: URI versioning for major changes, header for minor improvements
-*   **Error Handling**: "How do you design a robust error handling strategy for a REST API?"
-    * Consistent error format: 
-        ```json
-        { "error": { "code": "invalid_request", "message": "Email is required", "field": "email" } }
-        ```
-    * HTTP status codes: 
-        * 400: Client error (validation, bad request)
-        * 401: Unauthorized (missing/invalid auth)
-        * 403: Forbidden (access denied)
-        * 404: Not found
-        * 409: Conflict
-        * 429: Rate limit
-        * 500: Server error
-    * Error codes: Machine-readable codes for client-side logic
-    * Error messages: User-friendly descriptions
-    * Logging: Log errors with request context for debugging
-    * Alerting: Monitor error rates and trigger alerts on anomalies
-    * Graceful degradation: Return partial data with error indicators instead of failing completely when possible
-    * Idempotency: Idempotent operations should return same error/result for same inputs
+*   **Video platform API**: pagination, uploads, partial updates.
+    * Pagination: use a cursor (`next_cursor`) for feeds that change; offsets only for small, stable lists. Set a max page size.
+    * Upload: server returns a pre-signed storage URL, client uploads directly, then a background job transcodes.
+    * Partial update: `PATCH` with JSON Merge Patch. `PUT` replaces the whole resource.
+*   **User clicks Pay twice**:
+    * Client sends one unique key for every attempt of the same payment.
+    * Server claims the key atomically (unique constraint or Redis `SET NX`), processes, stores the response with a TTL.
+    * Same key again: return the stored response. Same key with a different body: reject.
+*   **Removing a field many clients use**:
+    * Add the replacement first. Keep the old field working.
+    * Mark it deprecated (`Deprecation` and `Sunset` headers) and announce a date.
+    * Publish a migration guide. Track who still calls it.
+    * Remove only when usage is low, or in the next major version.
+*   **Feed at scale**: Prompt: "Twitter-like feed, 1M writes/sec, 10M reads/sec." (Numbers come from the prompt.)
+    * Fan-out on write: when someone posts, a worker pushes the post ID into each follower's cached timeline (a Redis sorted set of the latest N IDs).
+    * Fan-out on read for accounts with huge follower counts: merge their posts at read time instead.
+    * Use both. Posts live in a durable store (e.g., Cassandra, partitioned by user ID); timelines are a cache you can rebuild.
+    * Watch queue depth, cache hit rate, and read latency. Rate limit posting.
+*   **WebSockets vs. plain requests**:
+    * WebSockets (two-way) for chat and live collaboration. SSE (server to client) for notifications and live feeds.
+    * Plain requests or batch jobs for exports and periodic sync. Easier to scale and retry.
+    * Mix: batch for the initial sync, real-time for changes after that.
+*   **Rate limiting a public API**:
+    * Token bucket: tokens refill at a steady rate; each request spends one. Allows short bursts.
+    * Fixed window: count per minute with Redis `INCR` + `EXPIRE`. Simple, but bursts at window edges.
+    * A token bucket in Redis needs a Lua script to update tokens and time together.
+    * Limit per API key, with different limits per plan.
+    * Shared Redis counts across all instances; per-instance limits are faster but rough.
+    * Return `429` with a `Retry-After` header.
+*   **GraphQL N+1**:
+    * DataLoader batches all lookups of one type in a request into one query.
+    * Limit query depth and cost; allowlist queries for public clients.
+*   **URL shortener REST API**:
+    * `POST /v1/urls` creates a code (accepts an `Idempotency-Key`). `GET /{code}` redirects. `GET /v1/urls/{code}/stats` returns clicks. `DELETE` for the owner.
+    * 301 is cached by browsers, so you lose click stats. 302 sends every click through you.
+    * Resolve code collisions on the server. Return `409` only when a requested custom alias is taken.
+    * Optional expiry date; return `410 Gone` after it.
+*   **Versioning options**:
+    * URI (`/v1/orders`): clear, easy to route and cache. The common choice for major versions.
+    * Header (`Accept: application/vnd.example.v2+json`): clean URLs, but caches must vary on the header.
+    * Query parameter (`?version=2`): easy to add, easy to forget.
+    * Within a version, only make additive changes (new optional fields).
+*   **Versioning between microservices**:
+    * Keep changes backward compatible. With Protobuf, add fields with new numbers; never reuse old ones.
+    * Contract tests check that a provider change doesn't break its consumers.
+*   **Ride-hailing API**:
+    * `POST /v1/rides` to request a ride (with an idempotency key). `GET /v1/rides/{id}` for status.
+    * Drivers send location updates often, over a WebSocket or small frequent requests.
+    * Ride status changes are pushed to the rider (WebSocket or push notification).
+*   **Securing APIs**: Authentication, scopes and roles, rate limits, input validation. See [gateways and security](../6-backend-engineering/gateways-security.md).
+*   **Error handling**:
+    * One error shape everywhere: `{ "error": { "code": "invalid_request", "message": "Email is required" } }`.
+    * Correct status codes: 400 bad input, 401 not logged in, 403 not allowed, 404, 409 conflict, 429, 5xx server fault.
+    * Include a request ID. Never return stack traces.
 
 ### 7. Common Mistakes
-*   **Breaking Changes**: Removing a field or changing its data type on a `v1` API without a migration path.
-*   **Poor Status Codes**: Returning `200 OK` for an error with a body `{ "error": "failed" }`. Use semantic HTTP codes (400, 401, 403, 404, 500).
-*   **Under-filtering**: Fetching an entire User object (including password hash/address) when only the `username` was needed.
+*   **Breaking `v1` in place**: Removing a field or changing its type with no migration path.
+*   **`200 OK` for errors**: Breaks client retries, monitoring, and caches.
+*   **Returning too much**: Sending the full user object (password hash, address) when only the username is needed.

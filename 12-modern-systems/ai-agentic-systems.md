@@ -1,64 +1,69 @@
 # Modern Systems: AI Agents & RAG
 
 ### 1. Overview
-Modern software engineering increasingly involves integrating Large Language Models (LLMs) into system architectures. For senior engineers, this isn't just about "Chatbots," but about building resilient **Agentic Systems** that can use tools and **RAG** (Retrieval-Augmented Generation) architectures that provide LLMs with private, up-to-date context.
+Many systems now call Large Language Models (LLMs). Two common patterns: RAG, which gives the model relevant private or fresh documents with each question, and agents, which let the model call tools in a loop to finish a task. The engineering work is in retrieval quality, evaluation, latency, cost, and safety.
 
 ### 2. Key Concepts
-*   **RAG (Retrieval-Augmented Generation)**: Providing the LLM with relevant documents retrieved from a database *before* generating a response. This reduces "Hallucinations."
-*   **Vector DB**: Specialized databases (e.g., Pinecone, Weaviate, Milvus) that store data as high-dimensional "Embeddings" for fast similarity search.
-*   **Agentic Systems**: LLMs that can "Reason" and "Act" by choosing which external tools (APIs, Python scripts, DB queries) to use to solve a problem.
-*   **Tool Orchestration**: The middleware (e.g., LangChain, AutoGen) that manages the loops and state of an agent.
-*   **Memory Systems**: How an agent remembers past interactions (Short-term context window vs. Long-term DB memory).
+*   **Token**: A piece of a word. Context limits, latency, and price are all counted in tokens.
+*   **Context window**: The most tokens (input plus output) a model can handle in one call. Limits differ by model and change often.
+*   **Prompt template**: A reusable prompt with placeholders, such as `Answer using only these documents: {docs}. Question: {question}`.
+*   **Zero-shot vs. few-shot**: Zero-shot gives only instructions. Few-shot adds a few input/output examples to show the format.
+*   **Temperature**: Controls randomness. Lower values give more predictable output.
+*   **Embedding**: A list of numbers that represents the meaning of a text. Similar texts get nearby vectors.
+*   **RAG (Retrieval-Augmented Generation)**: Find relevant chunks of your documents, put them in the prompt, and ask the model to answer from them. It reduces made-up answers (hallucinations) but does not remove them.
+*   **Vector database**: Stores embeddings and finds the nearest ones fast with approximate nearest neighbor (ANN) indexes such as HNSW. Examples: Pinecone, Weaviate, Milvus, Qdrant, Chroma, and pgvector in Postgres. FAISS is a library, not a database.
+*   **Hybrid search**: Keyword search (BM25) plus vector search, merged and often reranked. It finds both exact terms and similar meanings.
+*   **Tool calling**: The model returns a structured request such as `get_order(id=42)`. Your code runs it and sends the result back. The Model Context Protocol (MCP) is a common standard for exposing tools to models.
+*   **Agent**: An LLM in a loop: decide the next step, call a tool, read the result, repeat until done. Frameworks: LangGraph, LlamaIndex, CrewAI, the OpenAI Agents SDK, the Claude Agent SDK, and Microsoft Agent Framework (the successor to AutoGen, which is now in maintenance mode).
+*   **Memory**: Short-term memory is the conversation in the context window. Long-term memory is facts or summaries stored in a database and retrieved later.
+*   **Streaming**: Sending tokens to the user as they are generated, so the first words appear quickly.
 
 ### 3. Real-World Usage
-*   **Customer Support**: A RAG-based bot that retrieves "Company Policy PDFs" from a Vector DB to answer user questions with 100% accuracy and citations.
-*   **AI Data Analyst**: An Agent that can write SQL, execute it against a DB, and generate a chart using Python—all from a single natural language prompt.
-*   **Code Assistants**: Tool-using agents that can read an entire codebase, find a bug, and propose a pull request.
-*   **Personalization**: Using Vector embeddings of "User Behaviors" to find similar products for recommendation in real-time.
+*   **Support assistant**: RAG over policy documents, with citations so users and reviewers can check the source.
+*   **Data analyst agent**: Writes SQL, runs it on a read-only replica, and plots the result.
+*   **Coding agent**: Searches the repository with tools, edits files, runs tests, and opens a pull request for review.
+*   **Recommendations**: Embeddings of products and user behavior find similar items.
 
 ### 4. Tradeoffs
-*   **RAG vs. Fine-tuning**: RAG is cheaper, faster to update with new data, and more accurate for "Facts." Fine-tuning is better for changing the "Tone" or specialized vocabulary of a model.
-*   **Agent Complexity vs. Control**: Agents provide massive power but are non-deterministic. A small change in the model's weights can break an agent's ability to call an API correctly.
-*   **Latency**: AI responses take seconds. Engineering around this (using Stream responses, optimistic UI, and caching) is a core modern challenge.
+*   **RAG vs. fine-tuning**: RAG suits facts that change or are private, and supports citations. Fine-tuning suits style, format, or narrow tasks. Fine-tuning is a poor way to add facts.
+*   **Agents vs. fixed workflows**: Agents handle open-ended tasks but are less predictable and use more tokens. If the steps are known, a fixed workflow with a few LLM calls is easier to test.
+*   **Model changes**: A new model version or a prompt edit can change behavior. Pin model versions and rerun evaluations before switching.
+*   **Latency**: Responses take seconds. Use streaming, smaller models for simple steps, caching, and parallel tool calls.
 
 ### 5. When NOT to Use
-*   **Predictable CRUD**: If you can solve a problem with a simple SQL query and a standard UI, do NOT use an LLM. It's too slow, too expensive, and unreliable.
-*   **Hard Math/Logic**: LLMs are "Probability Engines," not calculators. For hard math or complex rigid logic, have the LLM call a Python tool rather than doing the calculation itself.
+*   **Predictable CRUD**: If a SQL query and a form solve it, an LLM adds cost, latency, and errors.
+*   **Exact math and strict rules**: Let the model call a calculator, code, or a rules engine instead of doing it itself.
 
 ### 6. Interview Focus
-*   **The Hallucination Problem**: "How do you design a system that ensures the LLM's response is based ONLY on the provided context?" (Hint: Prompt Engineering + RAG validations).
-    * **The "Closed-Book" Architecture**: To ensure the LLM uses *only* the provided context, you need a "Closed-Book" RAG system. This is achieved through strict Prompt Engineering and Validation.
-    * **Prompt Engineering (The "Jailbreak" Defense)**:
-        * **Strict Context Adherence**: Your system prompt must explicitly forbid the model from using any external knowledge. A good example is the "Llama Guard" instruction set, which forces the model to respond with something like: *"I cannot answer this question as it is outside the scope of the provided documents."*
-        * **Instructional Priming**: Start the prompt with: *"You are an AI assistant that ONLY uses the context provided below. If the answer is not in the context, say so."*
-    * **Response Validation (The "Guardrail" Check)**:
-        * **Citation Verification**: After the LLM generates an answer, your backend code should check if the answer actually references the provided documents (if your RAG system provides citations).
-        * **hallucination Detection**: Use a smaller, faster "Toxicity/Safety" model (like Llama Guard or an off-the-shelf API) to classify the LLM's response as "Safe/Relevant" or "Unsafe/Hallucinated." If it fails, reject the response.
-*   **Vector DB Selection**: "What is the difference between a 'Global Search' in SQL and a 'Semantic Search' in a Vector DB?"
-    * **SQL (Global Search / Lexical Search)**:
-        * **Mechanism**: Uses keyword matching and indexing (e.g., B-trees, Inverted Indexes).
-        * **How it works**: It looks for exact text matches or patterns using operators like `LIKE '%term%'`.
-        * **Example**: `SELECT * FROM products WHERE name LIKE '%apple%'`.
-        * **Pros**: Fast, accurate for known terms, works well with structured data, uses less memory.
-        * **Cons**: Cannot understand context or synonyms. It won't find "iPhone" if you search for "Apple," nor will it understand "laptop" if you search for "computer."
-    * **Vector DB (Semantic Search)**:
-        * **Mechanism**: Uses vector embeddings and Approximate Nearest Neighbor (ANN) search.
-        * **How it works**: Converts text into high-dimensional numerical vectors. It finds vectors that are mathematically "close" to the query vector in the vector space.
-        * **Example**: Searching for "laptop computer" might find documents containing "Apple MacBook" or "Dell XPS" because their vectors are close in meaning, even if the exact words don't match.
-        * **Pros**: Understands context, synonyms, and relationships between words. Excellent for unstructured data (documents, images, audio).
-        * **Cons**: Slower than SQL for exact matches, requires more memory (and often specialized hardware like GPUs for training embeddings), can have false positives.
-*   **Cost Management**: "LLM API calls are expensive. How do you design a caching layer for common AI queries?" (Hint: Semantic Caching).
-    * **The Problem**: Traditional caching (based on exact query text) fails because `What is the return policy?` and `How do I return an item?` are different strings but have the same meaning. A naive cache would make two API calls, wasting tokens and money.
-    * **The Solution: Semantic Caching**:
-        1.  **Generate Embeddings**: When a user asks a question, convert it into a vector embedding using the same embedding model as your RAG system.
-        2.  **Vector Similarity Search**: Use a Vector Database (or an in-memory store like FAISS/Annoy) to search for *similar* embeddings, not exact matches.
-        3.  **The "Cache Hit" Logic**:
-            * **Threshold**: Define a "Similarity Threshold" (e.g., a cosine similarity score of 0.85 or higher).
-            * **Hit**: If you find a stored query whose embedding is very close to the new query (above the threshold), you assume the answer will be the same.
-            * **Response**: Return the previously cached LLM response *without* calling the expensive LLM API again.
-            * **Miss**: If no similar query is found, call the LLM, store the new query and its response in the cache, and then return the result.
+*   **Grounding**: "How do you make answers come only from the provided context?"
+    *   Retrieve well first: hybrid search, a reranker, and good chunking. Most wrong answers start with bad retrieval.
+    *   Instruct the model to answer only from the context, to cite chunk IDs, and to say "I don't know" when the context lacks the answer.
+    *   Abstain when retrieval scores are low instead of letting the model guess.
+    *   Check after generation: confirm cited chunks exist and support the claims, using an entailment (NLI) model or an LLM judge.
+    *   Treat retrieved text as untrusted. It can contain prompt injection.
+    *   Note: safety classifiers like Llama Guard detect harmful content. They do not detect hallucinations.
+*   **Search types**: "Keyword search vs. semantic search?"
+    *   Keyword search matches terms through an inverted index (Postgres full-text, Elasticsearch BM25). It is exact and good for IDs, error codes, and names. It misses synonyms. (`LIKE '%term%'` is not real search; it cannot use a normal index.)
+    *   Semantic search compares embeddings, so "laptop" can find "notebook computer". It is approximate, can miss exact identifiers, and needs embeddings computed for every document.
+    *   Production systems usually combine both.
+*   **Cost**: "How do you cut LLM cost for repeated questions?"
+    *   Exact cache: same normalized prompt, same answer.
+    *   Semantic cache: embed the question and reuse a stored answer when a past question is close enough. Tune the threshold on real examples. "Cancel my order" and "don't cancel my order" can look similar.
+    *   Scope the cache by user permissions and give entries a time limit.
+    *   Prompt caching by the provider makes a long, repeated prompt prefix cheaper and faster.
+    *   Send fewer tokens: retrieve fewer, better chunks, and use smaller models for easy steps.
+*   **Production integration**: "How do you put an LLM into a production app?"
+    *   Call it from your backend, never the browser, so API keys stay secret.
+    *   Set timeouts, retries with backoff, and a fallback model or message.
+    *   Validate structured output against a schema.
+    *   Log prompts, responses, token counts, latency, and errors. Track quality with an evaluation set.
+*   **Latency**: "How do you make a real-time LLM feature feel fast?"
+    *   Stream tokens to the user.
+    *   For voice, start the LLM call on partial speech-to-text results instead of waiting for the full sentence.
+    *   Cache retrieval results and keep the prompt short.
 
 ### 7. Common Mistakes
-*   **Ignoring Token Costs**: Building a RAG system that sends the entire company handbook for every query, resulting in a $10,000 monthly OpenAI bill.
-*   **Bad Chunking**: Breaking documents into chunks that are too small, losing the context needed for the LLM to understand the data.
-*   **Evaluating "Feel" instead of "Metrics"**: Testing an AI system by just asking it 5 questions and saying "it feels good," rather than using an automated evaluation framework (like RAGAS).
+*   **Too much context**: Sending whole documents with every call. It costs more and can make answers worse.
+*   **Bad chunking**: Chunks too small lose meaning; chunks too large bury the answer. Split on document structure and keep titles with chunks.
+*   **No evaluation**: Judging by "it feels good" after five questions. Build a test set and measure retrieval (recall@k) and answers (faithfulness, correctness), with tools such as RAGAS.
+*   **Ignoring permissions**: Retrieving documents the user is not allowed to see. Filter by access rights at retrieval time.

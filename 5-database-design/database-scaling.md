@@ -1,62 +1,70 @@
 # Database Scaling: Replicas, Sharding, & Partitioning
 
 ### 1. Overview
-Database scaling is the process of expanding a database to handle increasing amounts of data and traffic. For a senior engineer, this is about moving from a single instance to a distributed system, managing the complexity of data distribution, and ensuring consistency across nodes.
+Scaling a database means handling more data and traffic than one server can. Usual order: tune the single server, buy a bigger one, add read copies, then split the data across servers. Each step adds capacity and also adds complexity.
 
 ### 2. Key Concepts
-*   **Read Replicas**: Creating "Follower" nodes that mirror the "Leader." The Leader handles all writes; Followers handle only reads.
-*   **Sharding (Horizontal Partitioning)**: Splitting a single large dataset across multiple independent database instances. Each instance (Shard) holds a fraction of the data.
-*   **Vertical Partitioning**: Splitting a table by columns. (e.g., putting "Big BLOBS" like `profile_image` in one table and `username/email` in another).
-*   **Partition Key / Shard Key**: The unique field used to decide which shard/node a piece of data belongs to.
-*   **Federation**: Splitting databases by business function (e.g., a "Users DB," a "Orders DB," a "Products DB").
+*   **Read replica**: A copy of the primary database that serves reads. All writes still go to the primary.
+*   **Sharding**: Splitting rows across separate database servers. Each server (shard) holds part of the data. Built into MongoDB and CockroachDB; Vitess adds it to MySQL.
+*   **Table partitioning**: Splitting one big table into parts inside the same database, e.g., one partition per month. Old months are cheap to drop, and queries on a date range skip other partitions.
+*   **Partitioning vs. sharding**: Partitions live on one server; shards live on different servers. Partitioning helps manage big tables. Only sharding adds write capacity.
+*   **Partition types**: Range (by date), list (by fixed values like `'US'`, `'EU'`), hash (spread by a hash of a key), or a mix.
+    ```sql
+    CREATE TABLE transactions (
+        id         BIGSERIAL,
+        user_id    INT NOT NULL,
+        amount     NUMERIC(10, 2),
+        created_at DATE NOT NULL,
+        PRIMARY KEY (id, created_at)  -- must include the partition column
+    ) PARTITION BY RANGE (created_at);
+
+    CREATE TABLE transactions_2024_01 PARTITION OF transactions
+        FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');  -- upper bound excluded
+    ```
+*   **Vertical partitioning**: Splitting a table by columns, e.g., moving a large `profile_image` out of `users`.
+*   **Shard key**: The column that decides which shard a row goes to. Common choices: user ID, tenant ID, region. Example: `user_id % 4` picks shard 0 to 3.
+*   **Federation**: One database per business area: users, orders, products.
 
 ### 3. Real-World Usage
-*   **Social Media Feed**: 99% of traffic is reading. Using 1 Leader for writes and **10 Read Replicas** to handle the massive read volume.
-*   **Global SaaS (Slack/Discord)**: Using **Sharding** where each "Workspace" or "Guild" has its own shard. A user in Workspace A never touches the database for Workspace B.
-*   **E-Commerce Search**: Moving "Product Descriptions" and "Reviews" to a separate **Vertical Partition** or even a different DB (Elasticsearch) to keep the core "Order" table lean and fast.
-*   **Multi-Region Failover**: Maintaining a "Standby" replica in a different geographic region to recover from a total region data-center outage.
+*   **Read-heavy feed**: One primary for writes, several replicas for reads.
+*   **Multi-tenant SaaS**: Shard by tenant ID, so most queries hit one shard.
+*   **Search**: Product text and reviews go to a search engine (e.g., Elasticsearch), keeping order tables small.
+*   **Disaster recovery**: A standby replica in another region, promoted if the main region fails.
 
 ### 4. Tradeoffs
-*   **Read Replicas vs. Consistency**: Replicas are usually asynchronous. A user might write to the Leader and immediately read from a Follower that hasn't received the update yet ([Replication Lag](../4-distributed-systems/consistency-models.md)).
-*   **Sharding vs. Complexity**: Sharding is the "End Game" of scaling but it makes across-shard `JOINs` and "Aggregations" nearly impossible. It also makes "Re-sharding" (moving data as shards grow) extremely difficult.
-*   **Shard Key Choice**: A bad shard key leads to "Hot Shards" (one server doing all the work while the others are idle).
+*   **Replica lag**: Replication is usually asynchronous. A read right after a write can hit a replica that doesn't have the write yet ([Replication Lag](../4-distributed-systems/consistency-models.md)). Synchronous replication fixes this but makes writes slower.
+*   **Sharding cost**: Joins across shards become several queries merged in code. Transactions across shards need two-phase commit or sagas. The app or a proxy must route each query to the right shard. Backups, restores, and moving data between shards get harder.
+*   **Hot shard**: A bad shard key sends most traffic to one shard while others sit idle.
 
 ### 5. When NOT to Use
-*   **Sharding**: **Avoid at all costs** until you have exhausted every other option (Vertical scaling, SQL optimization, Caching, Read Replicas). Sharding adds immense architectural overhead.
-*   **Read Replicas**: If your app is write-heavy (1:1 read/write ratio), adding read replicas won't help; it will actually add more load to the Leader to manage replication.
+*   **Sharding**: Last resort. Try query tuning, indexes, a bigger server, caching, and replicas first.
+*   **Replicas for write-heavy load**: Replicas only add read capacity. Every replica must apply every write, so they don't help writes and they fall behind.
 
 ### 6. Interview Focus
-*   **The Scaling Strategy**: "Our SQL database is reaching its limits. Walk me through the steps you would take to scale it, starting with the easiest."
-    * **Vertical Scaling**: Increase RAM/CPU of the existing server.
-    * **Read Replicas**: Add read replicas to handle read traffic.
-    * **Caching**: Implement Redis or Memcached to reduce database load.
-    * **Sharding**: Partition data across multiple servers if vertical scaling is not enough.
-    * **Database Optimization**: Optimize queries and add indexes.
-    * **Connection Pooling**: Use connection pooling to reduce connection overhead.
-    * **Denormalization**: Duplicate data to reduce joins and improve query performance.
-    * **Materialized Views**: Precompute and store query results for faster access.
-*   **Shard Key Design**: "If we shard our 'Uber-like' app by `city_id`, what happens when New York City has 100x more traffic than Buffalo? How do you fix the hot shard?"
-    * **Hot Shard**: When one partition key receives a disproportionately high volume of requests compared to others, causing a bottleneck. In DynamoDB, this can happen if you use a non-random partition key (e.g., `userId`) and a few users are very active.
-    * **Solution**: Use **Composite Keys** with a **Randomized Partition Key** or **Sharding**.
-    ```
-    // DynamoDB Schema for Social Feed
-    {PartitionKey: 'USER#123', SortKey: 'TIMESTAMP#2024-01-01T10:00:00Z', data: {...}} // Actual Post
-    {PartitionKey: 'USER#123', SortKey: 'FEED#2024-01-01T10:00:00Z', data: {...}} // Aggregated Feed Item
-    ```
-    To avoid hot partitions, you can hash the partition key or use a random prefix to distribute data across multiple physical partitions.
-    ```
-    // Randomized Partition Key Example
-    {PartitionKey: 'USER#123#abc', SortKey: 'TIMESTAMP#2024-01-01T10:00:00Z', ...} 
-    ```
-*   **Replication Lag**: "How do you handle the case where a user updates their profile and the 'Profile View' page still shows old data?"
-    * **Replication Lag**: When a user updates their profile, the changes are written to the primary database. However, due to network latency or replication delay, the read replicas may not have received the updated data yet. As a result, when a user views their profile page, they might see stale data from a replica that hasn't been updated.
-    * **Solution**: Use **Read-Your-Writes Consistency** or **Synchronous Replication**.
-    ```
-    // Read-Your-Writes Consistency Example
-    After a successful write to the primary database, explicitly read from the primary for the next request.
-    ```
+*   **Scaling steps**: "Our SQL database is at its limit. What do you do, easiest first?"
+    * Find the bottleneck: slow queries, missing indexes, locks, too many connections.
+    * Tune queries and indexes. Add a connection pooler (e.g., PgBouncer).
+    * Scale up: more CPU, enough RAM to hold the hot data, faster disks.
+    * Cache hot reads in Redis or Memcached.
+    * Add read replicas and handle lag.
+    * Use materialized views or denormalized tables for heavy repeated queries.
+    * Partition tables, split by business area, and shard last.
+*   **Hot shard**: "A ride app shards by `city_id`. One big city gets most of the traffic. How do you fix it?"
+    * Use a smaller unit than a city, e.g., a map grid cell (geohash).
+    * Or split the hot city: key on `(city_id, hash(ride_id) % N)`. City-wide queries then ask N shards.
+    * Or keep a lookup table from key to shard, so a hot city can move to its own hardware.
+*   **Replication lag**: "A user edits their profile and still sees the old one."
+    * The write went to the primary; the read hit a replica that is behind.
+    * Read the user's own data from the primary for a short time after they write.
+    * Or remember the primary's log position after the write, and only read from a replica that has reached it.
+    * Or use synchronous replication for this path, accepting slower writes.
+*   **High-read, low-write system**: "How would you design one?"
+    * Cache hot reads (Redis) and put static content on a CDN.
+    * Add read replicas behind a load balancer.
+    * Precompute expensive views (materialized views, denormalized tables).
+    * Writes stay on one primary, since there are few of them.
 
 ### 7. Common Mistakes
-*   **The "Big Shard" Mistake**: Waiting too long to shard. By the time the DB is too big, moving it to a sharded architecture requires days of downtime.
-*   **Ignoring Failover Latency**: Having replicas but not testing the "Switchover" process. A failover that takes 30 minutes is not a high-availability solution.
-*   **Sharding by Incremental ID**: Sharding by `user_id % 10`. This works initially but creates a nightmare when you need to add an 11th shard. Use **Consistent Hashing**.
+*   **Sharding too late**: Moving to shards while the database is already overloaded is much harder. The move (dual writes, backfill, cutover) needs time and spare capacity.
+*   **Untested failover**: Replicas exist, but nobody has practiced promoting one or reconnecting clients.
+*   **Modulo sharding**: With `hash(id) % N`, adding a shard moves most keys. Use consistent hashing, or many logical shards mapped onto fewer servers.

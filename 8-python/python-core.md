@@ -1,39 +1,55 @@
 # Python Core: Data Structures & Mutability
 
 ### 1. Overview
-Python is a high-level, interpreted language known for its readability and "Batteries Included" philosophy. For senior engineers, understanding the nuances of Python's core data structures and how it handles object references is essential for writing memory-efficient and bug-free code.
+Most everyday Python bugs come from two things: picking the wrong data structure, and forgetting that variables are names pointing at objects. If two names point at the same list, changing the list through one name shows up through the other.
 
 ### 2. Key Concepts
-*   **Built-in Data Structures**:
-    *   *Lists*: Dynamic arrays, O(1) append/access, O(n) insert/delete.
-    *   *Sets*: Unordered collection of unique items, O(1) average lookup.
-    *   *Dictionaries*: Hash maps, O(1) average lookup. Python 3.7+ preserves insertion order.
-*   **Mutable vs. Immutable**: 
-    *   *Mutable*: Objects that can be changed (Lists, Dicts, Sets).
-    *   *Immutable*: Objects that cannot be changed (Strings, Tuples, Integers, Frozensets).
-*   **Pass-by-Assignment**: Python passes references to objects. Whether you can change the object depends on its mutability.
+*   **list**: A dynamic array. Index access, `append`, and `pop()` from the end are O(1). Insert, delete, or `pop(0)` elsewhere are O(n). `x in list` is O(n). Use `collections.deque` for fast adds and removes at both ends.
+*   **tuple**: A fixed sequence that cannot change. It can be a dict key only if everything inside it is hashable.
+*   **set**: Unique items, no order. `x in s` is O(1) on average.
+*   **dict**: A hash map. Lookup is O(1) on average. Keeps insertion order since Python 3.7.
+*   **Mutable types**: Can change in place: `list`, `dict`, `set`, most of your own classes.
+*   **Immutable types**: Cannot change: `int`, `float`, `str`, `bytes`, `tuple`, `frozenset`. A tuple holding a list cannot change, but the list inside it can.
+*   **Passing arguments**: Python passes references to objects. Reassigning a parameter inside a function does nothing outside. Changing a mutable argument (like `items.append(x)`) is visible outside.
+*   **Pythonic habits**: Comprehensions for simple transforms, `enumerate()` instead of a manual counter, `zip()` to loop over two lists together, `a, b = b, a` to swap, `with` for files, PEP 8 style. `import this` prints the Zen of Python, a short list of style principles.
+    ```python
+    for i, name in enumerate(["alice", "bob"], start=1):
+        print(i, name.title())   # 1 Alice, then 2 Bob
+    ```
 
 ### 3. Real-World Usage
-*   **Fast Lookups**: Using `Sets` or `Dicts` instead of lists for membership checks to reduce complexity from O(n) to O(1).
-*   **Performance Optimization**: Using `List Comprehensions` instead of `for` loops for faster execution (C-level optimization).
-*   **Data Integrity**: Using `Tuples` to return multiple values from a function, ensuring they aren't accidentally modified by the caller.
-*   **Memory Management**: Choosing `Generators` (iterators) over lists to process millions of rows from a database without loading them all into RAM.
+*   **Fast lookups**: Turn a list into a `set` or `dict` before checking membership many times.
+*   **Comprehensions**: Usually a bit faster than a loop with `.append()`, and clearer for simple cases.
+*   **Several return values**: Return a tuple, or a `NamedTuple`/dataclass when fields need names.
+*   **Many database rows**: Loop with a generator instead of building a full list (see `python-advanced.md`).
+*   **Web APIs**: Flask is a small WSGI framework with many extensions. FastAPI is an ASGI framework built on type hints. It validates input with Pydantic, has dependency injection, generates API docs (Swagger UI, ReDoc), and supports `async` endpoints.
+*   **Scripts and CLIs**: `argparse` or `click`/`typer` for command-line options, `pathlib` and `os` for files and paths, `subprocess.run` to call other programs.
 
 ### 4. Tradeoffs
-*   **Flexibility vs. Safety**: Dynamic typing allows for rapid development but makes it easier to pass the "wrong object type" into a function, causing runtime errors.
-*   **Lists vs. Tuples**: Lists are flexible but use more memory due to "Over-allocation" for future growth; Tuples are fixed but extremely memory-efficient.
-*   **Dictionaries vs. NamedTuples/Dataclasses**: Dicts are easier to build on the fly; Dataclasses are more memory-efficient and provide better "Type Hinting" support.
+*   **Dynamic typing**: Fast to write, but wrong types fail only at runtime. Type hints plus mypy or pyright catch many of these early.
+*   **List vs tuple**: Lists keep spare room so appends are cheap. Tuples are fixed, a bit smaller, and can be dict keys.
+*   **Dict vs dataclass**: Dicts are quick to build but have no fixed fields. Dataclasses give named, typed fields. They save memory only with `@dataclass(slots=True)` (3.10+); otherwise each instance still has a `__dict__`.
 
 ### 5. When NOT to Use
-*   **Mutable Default Arguments**: **NEVER** use a list or dict as a default argument in a function definition (e.g., `def append(item, my_list=[])`). The list is created once at definition time, not execution time, leading to "Shared state" bugs.
-*   **Massive Mathematical Computations**: Pure Python lists are slow for heavy math. Use **NumPy** which uses C-based contiguous memory arrays.
+*   **Mutable default arguments**: Defaults are created once, when `def` runs. `def f(items=[])` shares one list across all calls. Use `items=None` and create the list inside.
+*   **Plain lists for heavy math**: Use NumPy. It stores numbers in compact arrays and loops in C.
 
 ### 6. Interview Focus
-*   **Mutability Trap**: "What is the output of this function when called twice? `def add_to(item, storage=[]): storage.append(item); return storage`."
-*   **Computational Complexity**: "Explain the Big-O complexity of searching for an item in a List vs. a Set. When is a List better?"
-*   **Copying**: "What is the difference between a 'Shallow Copy' (`copy()`) and a 'Deep Copy' (`deepcopy()`) in Python?"
+*   **Mutable default trap**:
+    ```python
+    def add_to(item, storage=[]):
+        storage.append(item)
+        return storage
+
+    add_to(1)  # [1]
+    add_to(2)  # [1, 2], same list both times
+    ```
+*   **List vs set lookup**: O(n) vs O(1) on average. A list is better when you need order, duplicates, or indexing.
+*   **Shallow vs deep copy**: `copy.copy(x)` (or `x.copy()`, `x[:]`) makes a new outer list that shares the inner objects. `copy.deepcopy(x)` copies everything inside too.
+*   **`is` vs `==`**: `is` checks "same object". `==` checks "equal value". Use `is` only for `None` and similar singletons.
 
 ### 7. Common Mistakes
-*   **Inefficient Concatenation**: Using `+=` to join large strings inside a loop (Strings are immutable, so this creates a new string every time). Use `''.join(list_of_strings)`.
-*   **Modifying a List while Iterating**: Deleting items from a list as you loop through it, which skips items and causes index errors.
-*   **Over-using global**: Using `global` variables instead of passing arguments, making the code untestable and prone to side-effects.
+*   **`+=` on strings in a loop**: Can build a new string each time. Collect parts in a list and use `''.join(parts)`.
+*   **Changing a collection while looping over it**: A list skips items. A dict raises `RuntimeError` if its size changes. Loop over a copy instead.
+*   **`[[0] * 3] * 3`**: Creates three references to the same inner list. Use `[[0] * 3 for _ in range(3)]`.
+*   **Too many globals**: Hidden shared state makes code hard to test. Pass arguments instead.

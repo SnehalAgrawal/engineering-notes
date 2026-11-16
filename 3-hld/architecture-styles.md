@@ -1,74 +1,69 @@
 # Architecture Styles: Monolith, Microservices, & EDA
 
 ### 1. Overview
-Architecture styles define the high-level organization of a software system. A senior engineer must move beyond "Microservices are better" and understand that architecture is a response to **Organizational Structure** (Conway's Law) and **Domain Complexity**.
+An architecture style is how you split a system into deployable parts and how those parts talk. The right choice depends on team size, how complex the domain is, and how much the team can operate. Conway's Law: systems end up shaped like the teams that build them.
 
 ### 2. Key Concepts
-*   **Monolith**: Single deployment unit. Easy to develop and test initially.
-*   **Modular Monolith**: Code is logically separated into independent modules but deployed as one unit. Combines Monolith simplicity with Microservice boundaries.
-*   **Microservices**: Distributed services grouped by business capability. Each has its own DB, deployment pipeline, and scaling policy.
-*   **Event-Driven Architecture (EDA)**: Services communicate via asynchronous events (Pub/Sub). Decouples the "Producer" from the "Consumer."
-*   **Serverless (FaaS)**: Execution model where the cloud provider manages infrastructure entirely; functions run based on triggers (HTTP, S3 events).
+*   **Monolith**: One app, one deploy. Easy to build, test, and debug early on.
+*   **Modular monolith**: One deploy, but with strict module boundaries inside. Easy to split later.
+*   **Microservices**: Small services, each owning one business area, its own data, and its own deploys.
+*   **Event-driven architecture (EDA)**: Services publish events to a broker; others react. The producer doesn't know who listens. Microservices often use both direct calls and events.
+*   **Event sourcing**: Store every change, not just the current state. A bank account is a list like "deposit 500, withdraw 200, deposit 700". Replay it to get the balance.
+    *   Gives a full history and lets you rebuild state.
+    *   Harder to change event formats and to query.
+*   **CQRS**: Use one model for writes and separate models shaped for reads. Read models are usually updated a moment later.
+*   **Serverless (FaaS)**: The cloud runs your functions on triggers (HTTP call, file upload, queue message). No servers to manage.
 
-**Microservices vs Event-Driven Architecture**
-| Feature           | Microservices                    | Event-Driven Architecture (EDA)  |
-|-------------------|----------------------------------|----------------------------------|
-| Communication     | Direct (REST, gRPC, queues)    | Indirect (Events via broker)     |
-| Coupling          | Loose coupling                   | Very loose coupling              |
-| Scalability       | Scale services independently   | Scale event processing           |
-| Data Flow         | Request/Response (sync/async)  | Event streams (async)            |
-| Complexity        | Moderate (service orchestration) | High (event tracing, ordering)   |
-| Best For          | Business domains, workflows    | Real-time processing, IoT, logs  |
+| | Direct calls (REST, gRPC) | Events via a broker |
+|---|---|---|
+| Coupling | Caller waits for the callee | Producer doesn't know consumers |
+| If the other side is down | Caller fails | Broker holds events; consumers catch up |
+| Debugging | Simple call chain | Harder to trace |
+| Good for | Queries, user actions needing an answer | Fan-out, notifications, streams |
 
 ### 3. Real-World Usage
-*   **Early Stage Startup**: A pure Monolith (Rails/Django) to iterate fast and find product-market fit.
-*   **Scale-up (Uber/Netflix)**: Hundreds of Microservices to allow independent teams to ship features. Often requires the [Saga Pattern](../2-design-patterns/cloud-native-patterns.md) for data consistency.
-*   **Log Processing**: EDA where a "Log Producer" emits events and multiple consumers (Elasticsearch, S3, Slack Alerts) process them independently.
-*   **Image Resizing**: Using Serverless (AWS Lambda) to trigger a resize function whenever a user uploads a photo to S3.
+*   **Early startup**: A monolith (Rails, Django) to move fast while the product changes.
+*   **Large companies**: Many microservices so teams ship on their own. Netflix and Uber have written publicly about this. Workflows across services often use the [Saga pattern](../2-design-patterns/cloud-native-patterns.md).
+*   **Log processing**: One event stream; search, archive, and alerting each consume it.
+*   **Ledgers**: Event sourcing for the audit trail, with CQRS read models for balances.
+*   **Image resizing**: A serverless function runs when a photo lands in storage.
 
 ### 4. Tradeoffs
-*   **Microservices vs. Monolith**: Microservices offer team autonomy and scaling but introduce "Distributed System Tax" (Network latency, data consistency, observability nightmare).
-*   **EDA vs. REST**: EDA makes a system more extensible but much harder to trace and debug "phantom" bugs triggered by event cascades.
-*   **Serverless Cost**: Serverless is cheap for low, bursty traffic but significantly more expensive than reserved instances for steady-state, high-volume workloads.
+*   **Microservices vs. monolith**: Team independence and separate scaling, but you pay in network calls, data consistency work, and monitoring.
+*   **Events vs. direct calls**: Easy to add new consumers, harder to trace a chain of events.
+*   **Serverless cost**: Cheap for low or spiky traffic, often expensive for steady heavy traffic.
 
 ### 5. When NOT to Use
-*   **Microservices**: Do NOT use if your team is small (< 10-15 people). You'll spend more time managing infrastructure than writing business logic.
-*   **EDA**: Avoid for synchronous requirements. If a user needs an immediate "Success/Fail" based on 5 external calls, a synchronous REST/gRPC approach is cleaner.
+*   **Microservices**: Small team or unclear domain. You'll maintain plumbing instead of features, and the boundaries will be wrong.
+*   **EDA**: When the user needs an immediate answer that depends on several services.
+*   **Event sourcing**: Plain CRUD data where nobody needs history.
 
 ### 6. Interview Focus
-*   **The "Why"**: "Why would you split this Monolith today? What specific pain points are we solving?"
-    * I’d split a monolith only if it’s causing real pain — like slow deployments, tight coupling between teams, or scalability issues where one module limits the entire system.
-    * Microservices help by enabling independent deployments, team ownership, and scaling specific components instead of the whole system.
-*   **Data Strategy**: "How do you handle 'JOINS' in a microservice architecture where User data and Order data are in different DBs?" (API Composition vs. CQRS).
-    * Since cross-service joins aren’t feasible, we use two main approaches:
-    * API Composition — a service calls multiple services at runtime and aggregates results (simpler but higher latency).
-    * CQRS with denormalization — we maintain a read model that combines User + Order data using events (faster reads, eventual consistency).
-    * Choice depends on latency vs consistency tradeoffs.
-*   **Failure Modes**: "What happens in our EDA if the Message Broker (Kafka/RabbitMQ) goes down?"
-    * If the broker goes down, producers can’t publish events and consumers can’t receive them, so the system may stall.
-    * To handle this, we use replication (clustered brokers), retries with backoff, durable message storage, and fallback mechanisms like local queues or temporary persistence.
-    * The goal is to avoid data loss and recover gracefully once the broker is back.
-*   **Monolith vs Microservices**: "When would you choose Monolith over Microservices?"
-    * I’d choose a monolith when:
-        * Team is small (under 10 developers)
-        * Domain is simple and not rapidly evolving
-        * Need to iterate quickly with few moving parts
-        * Operational simplicity is prioritized over independent scaling
-    * Microservices add overhead (CI/CD, monitoring, orchestration) that can slow down early-stage teams. A well-modularized monolith is often better than poorly implemented microservices.
-*   **Serverless**: "When would you choose Serverless over traditional servers?"
-    * Serverless shines when:
-        * Workloads are unpredictable (spiky traffic)
-        * Need to scale to zero (idle resources = zero cost)
-        * Focus is on business logic, not infra management
-        * Event-driven triggers (file uploads, webhooks) are common
-    * Ideal for MVPs, APIs, data processing pipelines
-    * Not great for steady, heavy workloads (more expensive) or long-running processes (timeouts)
-*   **EDA vs REST**:
-    * Use EDA when you need loose coupling, scalability, and real-time processing (e.g., notifications, logs, IoT).
-    * Use REST when you need synchronous communication, immediate responses, and simpler debugging (e.g., CRUD operations, workflows).
-    * Many systems use both: REST for commands (user actions) and EDA for events (system reactions).
+*   **Why split the monolith?**
+    * Only for real pain: blocked deploys, one module forcing the whole app to scale, different reliability needs.
+    * Split where it hurts. Start with a modular monolith if unsure.
+*   **Joining data across services**: User and Order data live in different services.
+    * API composition: call both and merge. Simple, but slower and fails if either is down.
+    * CQRS read model: build a combined view from events. Fast reads, slightly stale.
+*   **Broker goes down**:
+    * Producers can't publish; consumers stop.
+    * Use a replicated broker cluster and producer retries.
+    * Use the outbox pattern: save the event in the DB in the same transaction, send it later. No event is lost.
+*   **When to pick a monolith**: Small team, changing domain, need to move fast, little ops capacity.
+*   **When to pick serverless**:
+    * Good: spiky traffic, scale to zero, event triggers, MVPs, small data jobs.
+    * Bad: steady heavy load, long jobs, paths that can't take cold-start delay.
+*   **Events vs. REST**:
+    * REST for actions that need an answer now (CRUD, user commands).
+    * Events for reactions and fan-out (notifications, logs, IoT).
+    * Most systems use both: REST for the command, events for what happens after.
+*   **Event-driven stock trading system**:
+    * Orders come in as events, partitioned by stock symbol.
+    * One matching engine per symbol processes orders in strict order.
+    * Trades go out as events to settlement, market data, and notifications.
+    * Event sourcing keeps a full, replayable record of every order.
 
 ### 7. Common Mistakes
-*   **Distributed Monolith**: Building microservices that are so tightly coupled via synchronous HTTP calls that if one goes down, they ALL go down.
-*   **Shared Databases**: Multiple microservices pointing to the same DB schema. This destroys the primary benefit of microservices (Independent Evolution).
-*   **Ignoring Observability**: Moving to microservices without distributed tracing (Jaeger/Zipkin) and centralized logging.
+*   **Distributed monolith**: Services chained by sync calls. One goes down, all go down.
+*   **Shared database**: Several services writing the same tables. Nobody can change the schema alone.
+*   **No tracing**: Moving to microservices without distributed tracing and central logs.

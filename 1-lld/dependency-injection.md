@@ -1,203 +1,97 @@
 # Dependency Injection (DI)
 
 ### 1. Overview
-Dependency Injection is a design pattern in which an object receives other objects that it depends on. It is the primary way to achieve **Dependency Inversion**, allowing objects to be decoupled and making systems more testable and modular.
 
-#### 1.1 Without Dependency Injection
-The class is responsible for creating its own dependencies, leading to tight coupling.
+With DI, an object gets the things it needs (its dependencies) from outside, instead of creating them itself. It is the most common way to follow the Dependency Inversion principle. Code becomes easier to test and to rewire.
 
-```python
-# Python
-class Engine:
-    def start(self):
-        print("Engine started")
+Analogy: without DI, a phone has its charger built in. With DI, you plug in any compatible charger.
 
-class Car:
-    def __init__(self):
-        self.engine = Engine() # Tightly coupled: Car "knows" how to create Engine
-
-    def drive(self):
-        self.engine.start()
-```
+Without DI, `Car` decides which engine to build:
 
 ```javascript
-// JavaScript
-class Engine {
-  start() {
-    console.log("Engine started");
-  }
-}
-
 class Car {
   constructor() {
-    this.engine = new Engine(); // Tightly coupled
-  }
-
-  drive() {
-    this.engine.start();
+    this.engine = new Engine(); // tightly coupled
   }
 }
 ```
 
-#### 1.2 With Dependency Injection
-Dependencies are "injected" from the outside, usually through the constructor.
-
-```python
-# Python
-class Car:
-    def __init__(self, engine):
-        self.engine = engine # Dependency is provided, not created
-
-    def drive(self):
-        self.engine.start()
-
-# We can now swap implementations easily
-class ElectricEngine:
-    def start(self):
-        print("Electric engine started")
-
-engine = ElectricEngine()
-my_car = Car(engine)
-my_car.drive()
-```
+With DI, the engine is passed in, so any engine works:
 
 ```javascript
-// JavaScript
 class Car {
   constructor(engine) {
-    this.engine = engine; // Injected dependency
+    this.engine = engine;
   }
-
-  drive() {
-    this.engine.start();
-  }
+  drive() { this.engine.start(); }
 }
 
-// Swapping implementations
-class ElectricEngine {
-  start() {
-    console.log("Electric engine started");
-  }
-}
-
-const engine = new ElectricEngine();
-const myCar = new Car(engine);
-myCar.drive();
+new Car(new ElectricEngine()).drive();
 ```
 
-### Framework-Level DI
-Most modern frameworks provide a "Container" to automate this.
-
-```javascript
-// JavaScript/TypeScript (NestJS Example)
-@Injectable()
-class Engine {}
-
-@Injectable()
-class Car {
-  constructor(private engine: Engine) {} // Auto-injected by framework
-}
-```
+Frameworks can do the wiring for you with a container. Plain JavaScript has no built-in container, so wiring is done by hand at startup.
 
 ```python
-# Python (FastAPI Example)
-from fastapi import Depends
+# FastAPI: the framework calls get_engine() and passes the result in
+from fastapi import Depends, FastAPI
+
+app = FastAPI()
 
 def get_engine():
     return Engine()
 
 @app.get("/drive")
 def drive(engine: Engine = Depends(get_engine)):
-    return engine.start()
+    engine.start()
+    return {"status": "driving"}
 ```
 
-#### Types of Dependency Injection
-* Constructor Injection – dependencies passed via constructor
-* Setter Injection – dependencies set via setter methods
-* Field Injection – dependencies assigned directly to fields (common in frameworks like Spring)
-
-#### Why use DI?
-* Loose coupling → components are independent
-* Easier testing → you can inject mocks or stubs
-* Better maintainability → easier to modify or extend
-* Flexibility → swap implementations without changing code
-
-#### Real-world analogy
-
-Think of a phone charger:
-* Without DI: the phone builds its own charger
-* With DI: you plug in any compatible charger
-
-#### Common frameworks using DI
-* Java: Spring, Guice
-* .NET: Built-in DI container
-* JavaScript/TypeScript: Angular, NestJS
+In NestJS (TypeScript), a class marked `@Injectable()` and registered in a module is passed into constructors automatically.
 
 ### 2. Key Concepts
-*   **The Dependency**: An object that another object needs to function (e.g., a Database Service).
-*   **Injection**: The act of passing the dependency to a dependent object (the client) rather than letting the client create it.
-*   **Constructor Injection**: Passing dependencies through the class constructor (preferred for required dependencies).
-*   **Property/Setter Injection**: Assigning dependencies through public properties or setter methods (useful for optional dependencies).
-*   **Inversion of Control (IoC) Container**: A framework that manages the creation and lifecycle (scoping) of dependencies.
+
+* **Dependency**: an object another object needs, like a database client.
+* **Constructor injection**: pass dependencies to the constructor. Best for required ones, since the object can't exist without them.
+* **Setter injection**: set dependencies after creation. Good for optional ones.
+* **Field injection**: the framework writes straight into fields (like `@Autowired` on a field in Spring). Discouraged: dependencies are hidden and the class is hard to build in tests.
+* **IoC container**: the framework part that creates dependencies and manages how long each one lives.
+* **Benefits**: loose coupling, easy mocking in tests, and swapping implementations per environment without editing the class.
 
 ### 3. Real-World Usage
-*   **Unit Testing**: Injecting a `MockPaymentGateway` into an `OrderService` instead of the real one, allowing you to test the service without making HTTP calls.
-*   **Environment-Specific Config**: Injecting an `S3Storage` provider in production and a `LocalStorage` provider in development.
-*   **Frameworks**: Angular, Spring Boot, and .NET Core use built-in DI containers as their core architectural foundation.
+
+* **Unit tests**: inject a `MockPaymentGateway` into `OrderService`, so tests make no real HTTP calls.
+* **Per-environment setup**: `S3Storage` in production, `LocalStorage` in development.
+* **Frameworks**: Spring and Guice (Java), the built-in .NET container, Angular and NestJS all build on DI.
 
 ### 4. Tradeoffs
-*   **Setup Complexity**: Requires a "Composition Root" where all dependencies are wired together.
-*   **Indirection**: It can sometimes be difficult to see exactly which implementation of an interface is being used at runtime without checking the container configuration.
-*   **Learning Curve**: Modern DI libraries have complex concepts like Scoped, Singleton, and Transient lifetimes that can cause bugs if misunderstood.
+
+* **Setup**: you need one place where everything is wired together (the composition root).
+* **Indirection**: you may have to read the container config to see which class is actually used.
+* **Lifetimes**: singleton, scoped, and transient cause subtle bugs if misunderstood.
 
 ### 5. When NOT to Use
-*   **Small Libraries**: Adding a DI container dependency to a small utility library can be unnecessary overhead for consumers.
-*   **Value Objects**: Objects like `Money`, `DateRange`, or `UserDTO` should not be "injected"; they should be created directly as they don't have complex behaviors or side effects.
+
+* **Small libraries**: don't make users install a DI container. Plain constructor parameters are enough.
+* **Value objects**: `Money`, `DateRange`, or a DTO just hold data. Create them directly.
 
 ### 6. Interview Focus
-*   **Conceptual Difference**: "What is the difference between IoC and DI?"
-    
-    Inversion of Control (IoC) is a principle where the control of object creation and program flow is shifted from your code to an external system (like a framework).
-    
-    Dependency Injection (DI) is a design pattern used to implement IoC, where dependencies are provided to a class from the outside instead of being created inside it.
-    
-    👉 In one line: DI is a way to achieve IoC.
-*   **Lifetimes**: "Explain the difference between Singleton and Scoped dependencies in a web request context."
-    
-    Singleton and Scoped define how long a dependency instance lives in a web app.
 
-    Singleton [global (app-wide)]:
-    One instance for the entire application lifetime. Every request and user shares the same object. Example: database connection pool, logging service
-
-    Scoped [per request]:
-    One instance per web request. Each request gets its own instance, but within that request it’s shared. Example: user session data, request-specific context
-*   **Circular Dependencies**: "What happens when Class A needs Class B, and Class B needs Class A? How do you solve it?"
-    
-    A circular dependency occurs when two classes depend on each other, causing resolution issues in DI. It’s usually fixed by refactoring to remove the cycle, often by introducing a third abstraction or using lazy/setter injection.
-
-    ```
-    1. Break the cycle by introducing a third class: Move shared logic into C.
-    A → C ← B
-
-    2. Use an interface / abstraction: Depend on abstractions instead of concrete classes.
-
-    3. Lazy injection
-    class A {
-        constructor(getB) {
-            this.getB = getB;
-        }
-    }
-
-    4. Setter injection (instead of constructor)
-    a = A()
-    b = B()
-    a.set_b(b)
-    b.set_a(a)
-
-    5. Use events or callbacks: Instead of direct dependency, communicate via events.
-    ```
+* **IoC vs. DI**:
+  * IoC (Inversion of Control) is the broad idea: a framework controls creation or flow and calls your code.
+  * DI is one way to do IoC: dependencies come from outside. Callbacks, event handlers, and Template Method are other forms.
+* **Lifetimes in a web app**:
+  * Singleton: one instance for the whole app. Fits a connection pool or a logger.
+  * Scoped: one instance per request. Fits request context or a DB session.
+  * Transient: a new instance every time.
+  * Classic bug: a singleton that holds a scoped dependency keeps the first request's instance forever (a "captive dependency").
+* **Circular dependency (A needs B, B needs A)**: constructor injection can't build either one, so the container fails at startup. Usually a design smell. Fixes, best first:
+  * Move the shared logic into a new class C that both use (A → C ← B).
+  * Depend on an interface or an event instead of the other class.
+  * Lazy injection: pass a getter, like `constructor(getB)`, and call it only when B is needed.
+  * Setter injection: build both, then connect them. It works but hides the cycle.
 
 ### 7. Common Mistakes
-*   **Service Locator Anti-pattern**: Passing the DI container itself into a class so the class can "resolve" its own dependencies. This hides dependencies.
-*   **Constructor Over-injection**: A constructor having 10+ arguments is a code smell that the class has too many responsibilities (SRP violation).
-*   **Manual Wire-up in Large Apps**: Trying to manually inject 100+ dependencies without using a container, leading to a massive, unmaintainable main file.
+
+* **Service Locator**: passing the container into a class so it fetches its own dependencies. It hides what the class really needs.
+* **Too many constructor arguments**: a sign the class does too much (breaks SRP).
+* **Hand-wiring a large app**: without a container, the startup file grows huge and fragile.

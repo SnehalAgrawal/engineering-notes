@@ -1,106 +1,89 @@
 # System Design Framework: The 45-Minute Blueprint
 
 ### 1. Overview
-The System Design interview is a test of your ability to handle ambiguity and drive a technical conversation. For senior/staff roles, you are expected to take the lead, clarify requirements, and build a cohesive architecture. This framework ensures you cover all critical components without getting lost in low-level details too early.
+A system design interview checks that you can take a vague problem, lead the discussion, and reach a sensible design with clear tradeoffs. This framework keeps you from getting lost in details before the overall shape is clear.
 
 ### 2. Key Concepts (The 6-Step Blueprint)
-1.  **Requirements Clarification (5m)**: Define boundaries.
-    *   *Functional*: What does it do? (e.g., "Post a tweet," "Follow users").
-    *   *Non-Functional*: Scalability (DAU/MAU), Availability (99.99%), Latency (p95 < 200ms).
-2.  **Back-of-the-envelope Estimation (5m)**: Determine scale.
-    *   How much storage for 10 years? How many requests per second?
-3.  **API Design & Contract (5m)**: Define how the world talks to your system (e.g., `POST /v1/tweets`).
-4.  **Database Schema & Data Model (5m)**: Choose SQL vs. NoSQL and define tables/fields.
-5.  **High-Level Design (10m)**: Draw the boxes (Load Balancer, App Servers, DB, Cache).
-6.  **Deep Dive & Bottlenecks (15m)**: Focus on the hard parts (Scaling DB, Caching strategy, Failure modes).
+1.  **Requirements (~5 min)**:
+    *   *Functional*: What must it do? ("send a message", "follow a user").
+    *   *Non-functional*: Scale (daily users, peak RPS), uptime target, latency target, consistency, durability.
+    *   *Constraints*: Existing stack, team, budget, data retention, regulation (GDPR, HIPAA).
+    *   *Scope*: Agree on what's in the first version and what's out.
+2.  **Estimation (~5 min)**: Requests per second, storage, bandwidth. Only as exact as needed to make a decision.
+3.  **API (~5 min)**: The main endpoints, e.g. `POST /v1/messages`. See [API design](./api-design.md).
+4.  **Data model (~5 min)**: Entities, how they're read and written, and which store fits.
+5.  **High-level design (~10 min)**: Boxes and arrows. Walk one request from client to database and back.
+6.  **Deep dive (~15 min)**: The hard parts: scaling the data layer, caching, hot keys, failures.
+
+*   **HLD vs. LLD**: High-level design is the system view: components, how they talk, tech choices. Low-level design is inside one component: classes, data structures, schemas, error handling. "Design a parking lot" is an LLD question (see [1-lld](../1-lld/)).
+*   **Real design doc checklist**:
+    *   *Requirements*: functional, non-functional, constraints.
+    *   *Architecture*: components, data flow, external APIs.
+    *   *Component internals*: classes, schemas, retry and error flows.
+    *   *Scaling*: stateless services, load balancing, caching, queues, rate limits.
+    *   *Data*: SQL vs. NoSQL vs. time-series, partitioning, indexes, retention.
+    *   *Reliability*: redundancy, failover, retries with idempotency, circuit breakers, bulkheads.
+    *   *Security*: authentication (JWT, OAuth2, mTLS), encryption in transit and at rest, secrets.
+    *   *Delivery*: CI/CD, canary or blue-green rollouts, feature flags, config.
+    *   *Monitoring*: logs, metrics, traces, alerts.
+    *   *Tradeoffs*: latency vs. cost, consistency vs. availability, simple vs. flexible, open source vs. managed.
 
 ### 3. Real-World Usage
-*   **The "Design WhatsApp" Question**: Start by asking if we need "Read Receipts." Estimate media storage vs. text storage. Deep dive into "WebSockets vs. Long Polling" for real-time delivery.
-*   **The "Design Netflix" Question**: Requirements: Video upload vs. Viewers. Deep dive into "CDN distribution" and "Encoding pipelines."
-*   **The "Design TicketMaster" Question**: Deep dive into "Handling concurrency and distributed locks" to prevent double-booking the same seat.
+*   **URL shortener**: Create and resolve codes. Generate codes from a unique ID in base62 (0-9, a-z, A-Z). Key-value store, cache for popular codes, rate limiting, click stats sent through a queue. Reads dominate, so focus on caching.
+*   **Chat app (WhatsApp-like)**: Ask about group size, read receipts, media. Gateways hold WebSocket connections (compare with long polling); a registry maps user to gateway; messages stored in order per chat; media in object storage; a presence service for "online / last seen"; push notifications and sync for offline users; end-to-end encryption. Deep dive: routing a message to the right gateway and delivery states (sent, delivered, read).
+*   **Ride hailing (Uber-like)**: Drivers send location often. A geospatial index (geohash, quadtree, PostGIS) finds nearby drivers. Plus matching, pricing, payments, and notifications. Deep dive: write volume of locations, and making sure one driver gets one ride.
+*   **Video platform (Netflix-like)**: Upload and transcoding pipeline separate from playback. Deep dive: multiple bitrates and CDN delivery.
+*   **Ticket booking**: Deep dive: stop double-booking a seat with short holds and conditional writes (or a distributed lock); use a waiting room for on-sale spikes.
+*   **1M concurrent chat users** (prompt scale): Spread connections over many gateway servers. Route messages between gateways with pub/sub (Redis or Kafka). Plan for everyone reconnecting after a restart.
+*   **Worked example**: [High-throughput ingestion (10M sensors)](./example-high-throughput-ingestion.md).
 
 ### 4. Tradeoffs
-*   **Breadth vs. Depth**: Spending too much time on Estimations can leave no time for the High-Level design. Use estimations only to justify your database choice.
-*   **Ideal vs. Real**: Design for the "100 million user" scale requested, but mention how the system would look on Day 1 (Monolith) vs. Day 1000 (Microservices).
-*   **Complexity vs. Reliability**: Every box you add (Kafka, Redis, K8s) adds complexity. Justify every piece of the puzzle.
+*   **Breadth vs. depth**: Long estimates eat deep-dive time. Estimate only what changes a decision.
+*   **Day 1 vs. target scale**: Design for the asked scale, but say what you'd build first (often a monolith and one replicated DB).
+*   **More parts, more failures**: Every added component (Kafka, Redis, Kubernetes) must earn its place.
 
 ### 5. When NOT to Use
-*   **Coding/LLD Interviews**: Do not use this framework for "Design a Parking Lot." That requires Class Diagrams and SOLID, not Load Balancers and Partitions.
-*   **Deep Research Topics**: If the interviewer wants to focus *only* on the Database, skip the HLD and go straight to Sharding/Indexes.
+*   **LLD interviews**: Use classes and interfaces, not load balancers.
+*   **Focused questions**: If they only want the storage layer, go straight to schema, indexes, and sharding.
 
 ### 6. Interview Focus
-*   **Driving the Session**: "Don't wait for permission. Say: 'I'll start by clarifying requirements, then I'll move to API design. Does that sound good?'"
-    * Clarify functional requirements: What core actions must the system support? (e.g., for a URL shortener: create, redirect, delete).
-    * Clarify non-functional requirements (NFRs): Scalability (DAU/MAU), availability (SLAs), latency (p95/p99 targets), consistency needs (strong vs eventual), durability, security, operability.
-    * Clarify constraints: Budget, timeline, team size, existing tech stack, data retention policies, regulatory requirements (GDPR, HIPAA, etc.).
-    * Prioritize: Identify MVP scope vs nice-to-haves for future iterations.
-*   **Handling Constraints**: "What if the storage is limited? How would you change your schema?"
-    * Storage constraints: If storage is limited, use data compression (e.g., gzip for text, efficient codecs for media), data lifecycle policies (move old data to cold storage), TTL-based expiration for transient data, and efficient data structures (e.g., Bloom filters for URL lookups).
-    * Schema changes: Use denormalization for faster reads when space permits, or vertical/horizontal partitioning to distribute data across storage units. Consider encoding strategies (e.g., base62 for short codes) to minimize storage.
-    * Example: In a URL shortener with limited storage, use base62 encoding for short codes (62 chars vs 10 for decimal) to reduce storage per entry, implement TTL on expired URLs, and use Bloom filters for quick existence checks without full DB lookups.
-    * Tradeoffs: Storage savings may come at the cost of increased query complexity or slower writes (due to compression/encoding overhead).
-*   **Failure Thinking**: "What happens if this database node goes down right now?"
-    * Node failure detection: Use health checks (e.g., Prometheus exporters, Kubernetes liveness probes) and heartbeats to detect failed nodes quickly (typically within seconds).
-    * Automatic failover: Implement automatic failover to healthy replicas using load balancers and database clustering mechanisms (e.g., primary-replica in PostgreSQL/MySQL, consistent hashing for Cassandra).
-    * Data consistency: Use quorum-based writes (require acknowledgments from majority of replicas) to maintain consistency during failures. Implement conflict resolution mechanisms (e.g., last-write-wins, vector clocks) when needed.
-    * Recovery: After failure, automatically heal the cluster by promoting a replica to primary and creating a new replica to restore redundancy. Use read replicas for read scaling and offload backup/maintenance operations.
-    * Graceful degradation: Design the system to function in a degraded state when failures occur. For example, in a URL shortener, if the main DB is down, use local cache or read replicas; if both are unavailable, return cached redirects for popular URLs if available.
-    * Error handling: Return appropriate error codes (e.g., 503 Service Unavailable) with Retry-After headers, and implement circuit breakers to prevent cascading failures.
-    * Monitoring: Monitor failover times, error rates, and data consistency metrics to ensure system health.
+*   **Lead the session**: State your plan and check: "Requirements, estimates, API, data, architecture, then deep dive. OK?"
+*   **Limited storage**:
+    * Compress, set TTLs, move old data to cheaper storage.
+    * Use compact IDs and codes.
+    * A Bloom filter can answer "definitely not present" without reading storage.
+    * Cost: more CPU, slower writes, slower access to old data.
+*   **A database node dies right now**:
+    * Health checks detect it within seconds.
+    * Single-primary DB: promote a replica. With async replication, the last few writes can be lost.
+    * Leaderless DB (Cassandra): other replicas keep serving if enough of them respond.
+    * Quorum reads and writes (W + R > N) keep reads current despite one dead replica.
+    * Meanwhile serve cached or read-only data; return `503` with `Retry-After` for writes.
+    * Circuit breakers stop callers from piling up.
+    * Afterwards, replace the node to restore the replica count.
+    * Monitor failover time, error rate, and replication lag.
 
 ### 7. Common Mistakes
-*   **Silence**: Thinking in your head for 2 minutes. Always think out loud.
-*   **Jumping to the DB immediately**: Choosing "Couchbase" or "Kafka" before you even know what the functional requirements are.
-*   **Ignoring Non-Functional Requirements**: Designing a functional system that can only handle 10 users per second when the prompt asked for 10 million.
+*   **Silence**: Talk through your thinking.
+*   **Picking tech first**: Naming Kafka before the requirements need it.
+*   **Ignoring non-functional needs**: A design that works but can't reach the asked scale.
 
 ---
 
 ## Bloom Filters
-A Bloom filter in databases is a probabilistic data structure used to quickly check whether an element might be present in a set — or definitely not present.
+A Bloom filter answers "definitely not in the set" or "maybe in the set" using very little memory.
 
-### Core idea
-* It uses a bit array + multiple hash functions
-* When you insert a value → multiple bits are set
-* When you query:
-    * If any required bit is 0 → definitely not present
-    * If all bits are 1 → maybe present (false positives possible)
-* So:
-    * ❌ No false negatives
-    * ⚠️ Possible false positives
-    * ✅ Very fast and memory-efficient
+*   **How it works**: A bit array plus k hash functions. Adding a key sets k bits. A lookup checks those k bits: any 0 means definitely absent; all 1 means maybe present.
+*   **False positives**: Possible, and they rise as the filter fills. False negatives never happen.
+*   **Deletes**: Not supported by the basic version (counting Bloom filters support them).
+*   **Cassandra**: One filter per data file (SSTable), on by default. Reads skip files that can't hold the key.
+*   **RocksDB**: Supported per file; you turn it on with a filter policy.
+*   **Spark**: Can build a filter from one side of a join to skip rows on the other side (a config option).
+*   **ORC / Parquet**: Files can store filters for chosen columns. ClickHouse offers them as opt-in skip indexes.
+*   **PostgreSQL**: The `bloom` extension indexes many columns at once for equality filters on any mix of them. For one column, a normal B-tree is better.
 
-### Common use cases:
-* **Join optimization**
-    * In distributed systems (like Apache Spark or Apache Hive)
-    * A Bloom filter is built on one table and pushed to another node
-    * Helps skip rows that definitely won’t match → reduces data shuffle
-* **Storage engines / SSTables**
-    * In systems like Apache Cassandra or RocksDB
-    * Before hitting disk, Bloom filter checks:
-    * “Does this SSTable even contain this key?”
-    * If “no” → skip disk read entirely
-* **Query acceleration**
-    * Used in columnar DBs (e.g., ClickHouse)
-    * Helps filter blocks early
-
-### Is it enabled by default?
-* 👉 Short answer: It depends on the database.
-* 1. Enabled by default (common in storage engines)
-    * Apache Cassandra → Yes (configurable but typically on)
-    * RocksDB → Often enabled via block-based table options
-* 2. Not automatic (you must enable/configure)
-    * Apache Spark → You explicitly create Bloom filters
-    * PostgreSQL → Requires extension (e.g., bloom index)
-    * Apache Hive → Enabled via query hints or configs
-
-Bloom filters in PostgreSQL work via an index, and the query planner decides when to use it.
 ```sql
 CREATE EXTENSION bloom;
-
--- Create bloom index
-CREATE INDEX user_email_bloom ON users
-USING bloom (email);
-
--- Query planner uses it automatically when filterable
-SELECT * FROM users WHERE email = [EMAIL_ADDRESS]';
+CREATE INDEX orders_bloom ON orders USING bloom (customer_id, status, region, channel);
+SELECT * FROM orders WHERE status = 'shipped' AND region = 'EU';
 ```

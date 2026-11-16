@@ -1,36 +1,49 @@
 # Consistency Models & Conflict Resolution
 
 ### 1. Overview
-Consistency models define the contract between a data store and its clients regarding the visibility of updates. In a distributed system, there is a fundamental spectrum from "Strict" (Safe but slow) to "Eventual" (Fast but fuzzy). Senior engineers must choose the model that fits the specific business risk.
+A consistency model says when a write becomes visible to reads. At one end, strong consistency acts like a single copy but is slower. At the other, eventual consistency is fast but reads can be stale. Pick the weakest model each kind of data can safely use.
 
 ### 2. Key Concepts
-*   **Strong Consistency**: A read is guaranteed to return the most recent write. (Linearizability).
-*   **Eventual Consistency**: If no new updates are made, all reads will eventually return the same value. No guarantee on "when."
-*   **Causal Consistency**: Ensures that operations that are causally related are seen in the same order by all nodes.
-*   **Monotonic Reads**: Once a client has read a value, they will never see an older version of that value.
-*   **Conflict Resolution**: Strategies for when two nodes update the same data simultaneously (Last-Writer-Wins, Merkle Trees, CRDTs).
+*   **Strong consistency (linearizability)**: Once a write finishes, every later read sees it.
+*   **Eventual consistency**: If writes stop, all copies end up the same. No promise on when.
+*   **Causal consistency**: Things that depend on each other are seen in order everywhere. A reply never shows up before the post it answers.
+*   **Read-your-writes**: You always see your own changes.
+*   **Monotonic reads**: Once you've seen a value, you never see an older one.
+*   **Link to CAP**: Strong consistency can't stay available during a partition. Causal and the two session guarantees above can. See [HLD fundamentals](../3-hld/hld-fundamentals.md).
+*   **Conflict**: Two copies accept different writes to the same data at the same time.
+*   **Version vectors / vector clocks**: Tell whether two writes happened in order or at the same time.
+*   **Merkle trees**: Quickly find which copies differ, so they can be synced. They find differences; they don't decide the winner.
+*   **Last-writer-wins (LWW)**: Keep the write with the latest timestamp. Simple, but the other write is lost silently.
+*   **CRDTs**: Data types (counters, sets, text) whose concurrent edits merge automatically with no lost updates.
 
 ### 3. Real-World Usage
-*   **E-Commerce Inventory**: **Strong Consistency** is required. You can't sell the last item to two different people.
-*   **Social Feed/Likes**: **Eventual Consistency** is perfectly fine. It doesn't matter if one user sees 100 likes and another sees 102 for a few seconds.
-*   **Collaborative Editing (Google Docs)**: Uses **Operational Transformation (OT)** or **CRDTs** (Conflict-free Replicated Data Types) to resolve simultaneous typing into a consistent final document.
-*   **Global DNS**: A classic example of **Eventual Consistency**. When you change an IP, it takes hours to propagate across the globe.
+*   **Inventory and seats**: The final "take one" step must be strongly consistent (a conditional write or transaction). Showing stock levels can be stale.
+*   **Likes and view counts**: Eventual is fine. 100 vs. 102 likes for a few seconds hurts nobody.
+*   **Collaborative editing**: Google Docs uses Operational Transformation; libraries like Yjs and Automerge use CRDTs.
+*   **DNS**: Eventually consistent through caching. A change shows up as cached records expire (their TTL).
+*   **Profile edits**: Read-your-writes, so users see their own change right away.
 
 ### 4. Tradeoffs
-*   **User Experience vs. System Complexity**: Strong consistency feels better to users but requires complex locking or consensus that can cause the app to feel "sluggish."
-*   **Last-Writer-Wins (LWW)**: Very simple conflict resolution but results in "Lost Updates" where the slower user's changes are simply deleted.
-*   **CRDTs**: Mathematically elegant and ensure no data loss, but can be memory-intensive as they must store the history of changes.
+*   **Strong vs. eventual**: Strong avoids confusing results but adds wait time to writes.
+*   **LWW**: Easy, but loses updates without any error.
+*   **CRDTs**: No lost updates, but extra metadata, and they can't enforce rules like "balance never below zero".
 
 ### 5. When NOT to Use
-*   **Strong Consistency**: Avoid for non-user-facing analytics or background logging. The performance penalty is not worth it.
-*   **Eventual Consistency**: Do NOT use for financial ledgers, transactional logs, or security permission updates (where a delay in revoking access could be a vulnerability).
+*   **Strong consistency**: Analytics, logs, metrics, feeds. You pay latency for nothing.
+*   **Eventual consistency**: Ledgers, unique usernames, stock decrements, permission revokes (a slow revoke is a security hole).
 
 ### 6. Interview Focus
-*   **The Scenario Test**: "You are building a real-time multiplayer leaderboard. Which consistency model do you pick and why?"
-*   **Conflict Scenarios**: "Two users update their 'Bio' at the exact same millisecond on different nodes. How does your database handle this?"
-*   **Read-Your-Writes**: "How do you implement 'Read-Your-Writes' consistency in a system with asynchronous read replicas?" (Hint: Session stickiness or Version tracking).
+*   **Multiplayer leaderboard**: Eventual for the global board, read-your-writes for a player's own score, strong only where rewards or money depend on it.
+*   **Two users edit the same bio at once on different nodes**:
+    * Version vectors detect that the writes are concurrent.
+    * LWW is fine for a bio; or keep both and ask the user.
+    * With a single-leader database there's no conflict: the leader orders the writes.
+*   **Read-your-writes with async replicas**:
+    * Read from the primary for a short time after a user writes, or keep the user on one replica (sticky sessions).
+    * Or send the write's version with later reads and only use a replica that has caught up.
 
 ### 7. Common Mistakes
-*   **Assuming SQL = Strong**: Many SQL databases default to "Read Committed" isolation, which is NOT linearizable. You must explicitly set "Serializable" if you need strong guarantees.
-*   **The "Eventually Consistent" Trap**: Using eventual consistency but expecting the system to behave like it's strong, leading to race conditions in business logic.
-*   **Blindly Choosing LWW**: Using "Last-Writer-Wins" for critical data like account balances, where two small withdrawals at once could result in only one being recorded.
+*   **Mixing up isolation and replica lag**: Isolation levels (Read Committed, Serializable) are about concurrent transactions. They don't stop stale reads from async replicas.
+*   **Trusting the default isolation**: Read Committed (default in PostgreSQL and SQL Server) allows lost updates. Use Serializable or locks where it matters.
+*   **Treating eventual as strong**: "Check stock, then decrement" on an eventually consistent store causes races.
+*   **LWW for money**: Two withdrawals at once can end with only one recorded.
