@@ -38,7 +38,7 @@ Most notes follow the same outline:
 
 ## Corrections
 
-Found a mistake, or something that has gone out of date? [Open an issue](https://github.com/SnehalAgrawal/learning-material/issues) naming the file and what is wrong; a link to a source helps.
+Found a mistake, or something that has gone out of date? [Open an issue](https://github.com/SnehalAgrawal/engineering-notes/issues) naming the file and what is wrong; a link to a source helps.
 
 ## Licence
 
