@@ -1,15 +1,15 @@
-# Behavioral Design Patterns
+# Behavioral patterns
 
-### 1. Overview
+## Overview
 
 Behavioral patterns are about how objects talk to each other: who does what, and how requests and data move between them.
 
 * **Decoupling sender and receiver**: the object that asks shouldn't need to know who handles the request.
 * **Changing behavior at runtime**: swap an algorithm without editing the class that uses it.
 
-### 2. Key Concepts
+## Key concepts
 
-#### 2.1. Observer
+### Observer
 
 A subject keeps a list of subscribers and tells each one when something happens. It doesn't know what they do with the news.
 
@@ -41,7 +41,7 @@ class Store {
 
 Node's `EventEmitter` and the DOM's `addEventListener` are built-in versions. In Java or C#, an event bus often plays this role.
 
-#### 2.2. Strategy
+### Strategy
 
 Each version of an algorithm sits behind the same interface. The caller picks one at runtime.
 
@@ -67,7 +67,7 @@ discounts["member"](100); // 90
 
 In Java or C#, each strategy is a class that implements a `DiscountStrategy` interface.
 
-#### 2.3. State
+### State
 
 An object hands its behavior to a state object. Swap the state object and the behavior changes.
 
@@ -96,7 +96,7 @@ class Order:
         self.state.cancel(self)
 ```
 
-#### 2.4. Command
+### Command
 
 Wraps a request (the action plus its data) in an object. Now you can queue it, log it, retry it, or undo it.
 
@@ -125,11 +125,11 @@ history.pop().undo(); // doc.content is "Hello"
 
 In JavaScript a command can be just an object with two functions, `{ execute, undo }`. Java and C# usually use a `Command` interface with one class per command.
 
-#### 2.5. Chain of Responsibility
+### Chain of Responsibility
 
 A request passes through a list of handlers in order. Each handler either deals with it or passes it on. Express middleware, where each function calls `next()`, is the usual example.
 
-#### 2.6. Mediator
+### Mediator
 
 Objects talk to one central mediator instead of to each other. Many-to-many links become one-to-many.
 
@@ -150,7 +150,7 @@ class ChatRoom {
 
 Common in forms where several fields react to each other, in chat systems, and in games.
 
-### 3. Real-World Usage
+## Real-world usage
 
 * **Frontend stores** (Observer): Redux and Vuex notify the views that subscribed.
 * **Payment providers** (Strategy): switch between Stripe and PayPal.
@@ -158,25 +158,25 @@ Common in forms where several fields react to each other, in chat systems, and i
 * **Middleware** (Chain of Responsibility): Express and ASP.NET Core pipelines.
 * **Order lifecycle** (State): Pending, Paid, Shipped.
 
-### 4. Tradeoffs
+## Tradeoffs
 
 * **Observer**: subscribers that never unsubscribe stay in memory (a memory leak).
 * **Command**: a class for every small action adds a lot of code.
 * **Strategy vs. State**: same structure. The client picks the Strategy. In State, the state objects switch to the next state themselves.
 * **Mediator**: can grow into a God Object that knows everything.
 
-### 5. When NOT to Use
+## When not to use
 
 * **Chain of Responsibility**: in a long chain it is hard to tell which handler changed or dropped a request.
 * **Strategy**: for two options that never change, a simple `if` is enough.
 
-### 6. Interview Focus
+## Interview focus
 
 * **Long `if/else` for shipping cost**: replace it with Strategy.
 * **Decouple `CheckoutService` from email and analytics**: Observer, or events.
 * **Document approval where allowed actions depend on status**: State.
 
-### 7. Common Mistakes
+## Common mistakes
 
 * **Hardcoded chain**: each handler names the next one, instead of the client building the chain.
 * **Observer chains**: observers that trigger other observers make side effects hard to follow.

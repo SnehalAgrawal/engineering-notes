@@ -1,9 +1,9 @@
-# Cloud Architecture: Terraform (Infrastructure as Code)
+# Terraform
 
-### 1. Overview
+## Overview
 Terraform describes infrastructure (networks, databases, DNS, IAM) in HCL files. It compares the files with what exists and makes the API calls to close the gap. Changes then go through code review instead of console clicks. Terraform has used the Business Source License since 2023. OpenTofu is the open-source fork with a mostly compatible CLI.
 
-### 2. Key Concepts
+## Key concepts
 *   **Provider**: A plugin for one API, such as AWS, GCP, Kubernetes, or Cloudflare.
 *   **Resource**: Something Terraform creates and manages, such as a bucket.
 *   **Data source**: Something Terraform only reads, such as the latest AMI.
@@ -11,23 +11,23 @@ Terraform describes infrastructure (networks, databases, DNS, IAM) in HCL files.
 *   **State**: A file that maps each block in the code to a real object ID. The real cloud is the truth. State is how Terraform knows which object a block means.
 *   **Plan and apply**: `plan` shows what will be created, changed, or destroyed. `apply` does it.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **One workflow for many APIs**: AWS, DNS, and monitoring in the same tool. The code is not portable between clouds; each provider has its own resources.
 *   **History**: Infrastructure changes are reviewed in pull requests and tracked in Git.
 *   **New environments**: The same modules with different variables create a new environment or region. Data must be restored separately.
 *   **Drift detection**: A scheduled `terraform plan -detailed-exitcode` returns exit code 2 when someone changed things by hand.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Declarative**: You write the end state and Terraform works out the order. Some attribute changes force a replace (destroy and recreate), and the plan shows this.
 *   **State risk**: State must be stored remotely, locked, and backed up. If it is lost, Terraform forgets what it manages and resources must be imported again.
 *   **HCL limits**: Loops and conditions (`for_each`, `count`) are less flexible than a real programming language. Pulumi and CDK for Terraform use general-purpose languages.
 
-### 5. When NOT to Use
+## When not to use
 *   **Quick experiments**: The console is faster for a short test. Delete it afterwards.
 *   **Runtime objects**: Pods, autoscaled instances, and per-user resources belong to the app or autoscaler, not Terraform.
 *   **App releases**: Deploy app versions with Helm, Argo CD, or a serverless tool. Terraform manages the platform under them.
 
-### 6. Interview Focus
+## Interview focus
 *   **State locking**: "Why use a remote backend with locking?"
     *   Two applies at once can overwrite each other's state. A lock makes the second one wait or fail.
     *   A remote backend also shares state with the team and CI, encrypts it, and keeps old versions.
@@ -39,13 +39,13 @@ Terraform describes infrastructure (networks, databases, DNS, IAM) in HCL files.
     *   Add a `moved` block (`from` and `to`). `terraform state mv` does the same by hand.
     *   Related: `import` blocks adopt existing resources. `removed` blocks stop managing one without deleting it.
 
-### 7. Common Mistakes
+## Common mistakes
 *   **Secrets in state**: State stores values in plain text, including generated passwords. Never commit it. `sensitive = true` hides a value from output, not from state.
 *   **One giant state**: Plans get slow and one mistake can hit everything. Split state by environment and component.
 *   **Unpinned versions**: Pin provider versions and commit `.terraform.lock.hcl`, or a new major version can change behavior.
 *   **Not reading the plan**: Missing a "must be replaced" on a database.
 
-### Example
+## Example
 Pinned provider, remote state with locking, and a web server whose AMI is looked up instead of hardcoded (AMI IDs differ by region and go stale).
 
 ```terraform

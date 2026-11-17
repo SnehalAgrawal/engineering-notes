@@ -1,6 +1,6 @@
-# Dependency Injection (DI)
+# Dependency injection
 
-### 1. Overview
+## Overview
 
 With DI, an object gets the things it needs (its dependencies) from outside, instead of creating them itself. It is the most common way to follow the Dependency Inversion principle. Code becomes easier to test and to rewire.
 
@@ -48,7 +48,7 @@ def drive(engine: Engine = Depends(get_engine)):
 
 In NestJS (TypeScript), a class marked `@Injectable()` and registered in a module is passed into constructors automatically.
 
-### 2. Key Concepts
+## Key concepts
 
 * **Dependency**: an object another object needs, like a database client.
 * **Constructor injection**: pass dependencies to the constructor. Best for required ones, since the object can't exist without them.
@@ -57,24 +57,24 @@ In NestJS (TypeScript), a class marked `@Injectable()` and registered in a modul
 * **IoC container**: the framework part that creates dependencies and manages how long each one lives.
 * **Benefits**: loose coupling, easy mocking in tests, and swapping implementations per environment without editing the class.
 
-### 3. Real-World Usage
+## Real-world usage
 
 * **Unit tests**: inject a `MockPaymentGateway` into `OrderService`, so tests make no real HTTP calls.
 * **Per-environment setup**: `S3Storage` in production, `LocalStorage` in development.
 * **Frameworks**: Spring and Guice (Java), the built-in .NET container, Angular and NestJS all build on DI.
 
-### 4. Tradeoffs
+## Tradeoffs
 
 * **Setup**: you need one place where everything is wired together (the composition root).
 * **Indirection**: you may have to read the container config to see which class is actually used.
 * **Lifetimes**: singleton, scoped, and transient cause subtle bugs if misunderstood.
 
-### 5. When NOT to Use
+## When not to use
 
 * **Small libraries**: don't make users install a DI container. Plain constructor parameters are enough.
 * **Value objects**: `Money`, `DateRange`, or a DTO just hold data. Create them directly.
 
-### 6. Interview Focus
+## Interview focus
 
 * **IoC vs. DI**:
   * IoC (Inversion of Control) is the broad idea: a framework controls creation or flow and calls your code.
@@ -90,7 +90,7 @@ In NestJS (TypeScript), a class marked `@Injectable()` and registered in a modul
   * Lazy injection: pass a getter, like `constructor(getB)`, and call it only when B is needed.
   * Setter injection: build both, then connect them. It works but hides the cycle.
 
-### 7. Common Mistakes
+## Common mistakes
 
 * **Service Locator**: passing the container into a class so it fetches its own dependencies. It hides what the class really needs.
 * **Too many constructor arguments**: a sign the class does too much (breaks SRP).

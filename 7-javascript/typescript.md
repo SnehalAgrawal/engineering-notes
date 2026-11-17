@@ -1,9 +1,9 @@
-# TypeScript: Types, Generics, & Narrowing
+# TypeScript
 
-### 1. Overview
+## Overview
 TypeScript adds types to JavaScript. Types are checked when you compile and then removed. They catch mistakes early but do nothing at runtime. Typing is structural: two types match if their shapes match, whatever their names.
 
-### 2. Key Concepts
+## Key concepts
 *   **Basic types**: `string`, `number`, `boolean`, `bigint`, `symbol`, `null`, `undefined`, arrays (`number[]`), tuples (`[string, number]`).
 *   **`any`**: Turns type checking off. Avoid it.
 *   **`unknown`**: Accepts any value, but you must check its type before using it. Use it for untrusted input.
@@ -41,7 +41,7 @@ TypeScript adds types to JavaScript. Types are checked when you compile and then
 *   **`satisfies`**: Checks a value against a type but keeps its exact inferred type.
 *   **Enums**: Named constants, like `enum Role { Admin, User, Guest }` (`Role.Admin` is `0`). They create real objects at runtime. A union of string literals (`'admin' | 'user'`) is usually simpler. Literal unions also work with tools that only strip types, such as Node.js's built-in type stripping or the `erasableSyntaxOnly` option.
 
-### 3. `interface` vs `type`
+## `interface` vs `type`
 Both describe object shapes. For plain objects it is mostly style.
 
 | | `interface` | `type` |
@@ -54,22 +54,22 @@ Both describe object shapes. For plain objects it is mostly style.
 
 A common habit: `interface` for object shapes others extend (public APIs), `type` for unions, function types, and computed types.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Safety vs effort**: Types catch many bugs and make refactoring safe. Very clever types can be harder to read than the code.
 *   **Compile time only**: Data from the network is not checked. Use a schema library (Zod, Valibot) at those edges.
 
-### 5. When NOT to Use
+## When not to use
 *   **`any` to silence errors**: Use `unknown` and narrow, or fix the type.
 *   **Complex types in app code**: If a type needs a paragraph to explain, use a simpler type and a runtime check.
 
-### 6. Interview Focus
+## Interview focus
 *   **`any` vs `unknown`**: Both accept anything. `unknown` makes you check before use.
 *   **`interface` vs `type`**: See the table. Mention declaration merging and unions.
 *   **Structural typing**: Any object with the needed properties fits.
 *   **Exhaustive `switch`**: In `default`, assign the value to a `never` variable. A missed case becomes a compile error.
 *   **What `as` does at runtime**: Nothing. It is removed.
 
-### 7. Common Mistakes
+## Common mistakes
 *   **`strict` turned off**: Without `strictNullChecks`, `null` fits every type and hides bugs.
 *   **Hiding `null` with `as` or `!`**: `getElementById(...)!` can still be `null` at runtime.
 *   **Trusting API data**: `(await res.json()) as User` checks nothing.

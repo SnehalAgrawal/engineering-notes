@@ -1,9 +1,9 @@
-# Messaging & Queue Systems
+# Messaging and queues
 
-### 1. Overview
+## Overview
 Messaging lets services talk without calling each other directly. A broker sits in between, absorbs spikes, and holds work until a consumer is ready.
 
-### 2. Key Concepts
+## Key concepts
 *   **Pub/sub**: Every subscriber gets each message. For events like `OrderPlaced`.
 *   **Queue (point-to-point)**: Each message goes to one worker in a pool. For jobs like `GenerateThumbnail`.
 *   **At-most-once**: May lose messages, never duplicates.
@@ -14,22 +14,22 @@ Messaging lets services talk without calling each other directly. A broker sits 
 *   **Queue broker (RabbitMQ, SQS)**: Messages are removed once acknowledged. Per-message retries, routing, delays, and built-in DLQs. Simple for background jobs.
 *   **Picking one**: Kafka for event streams, many consumers, replay, high volume. RabbitMQ/SQS for task queues with per-message retry.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **Background jobs**: Save the order, queue a message, a worker builds the invoice PDF.
 *   **Log pipelines**: Services write to a Kafka topic; search, archive, and alerting each read it.
 *   **Slow third parties**: Queue outgoing emails so a slow email provider doesn't slow users down.
 *   **Notifications**: One `OrderPlaced` event; SMS, push, and email services each consume it and retry on their own.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Decoupling vs. debugging**: Following a request across queues needs correlation IDs and tracing.
 *   **Latency vs. resilience**: A queue adds a hop but keeps requests working when a worker is slow or down.
 *   **Ordering vs. parallelism**: Order holds only within a Kafka partition or an SQS FIFO message group. SQS standard queues don't keep order.
 
-### 5. When NOT to Use
+## When not to use
 *   **Caller needs the answer now**: "Is this username taken?" is a direct query.
 *   **Small apps**: A broker is one more thing to run. A jobs table in the database or a Redis-backed job queue (BullMQ in Node) may be enough.
 
-### 6. Interview Focus
+## Interview focus
 *   **Consumer crashes mid-processing**:
     * Acknowledge only after the work succeeds.
     * Unacknowledged messages come back (SQS visibility timeout, Kafka re-reads from the last committed offset).
@@ -44,7 +44,7 @@ Messaging lets services talk without calling each other directly. A broker sits 
     * Or make the operation naturally safe to repeat ("set status = paid" instead of "add 1").
 *   **DLQ handling**: Alert on DLQ size, find the cause, fix it, replay. Delete only truly invalid messages.
 
-### 7. Common Mistakes
+## Common mistakes
 *   **Non-idempotent consumers**: Processing the same order twice.
 *   **Big payloads**: Put the file in object storage and send its URL.
 *   **Not watching consumer lag**: Lag grows until old data expires unread or the disk fills.

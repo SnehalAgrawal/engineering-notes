@@ -1,9 +1,9 @@
-# API Design & Internal Contracts
+# API design
 
-### 1. Overview
+## Overview
 An API is a contract other teams and clients depend on. Good API design means picking the right protocol, changing the API without breaking clients, and making requests safe to retry.
 
-### 2. Key Concepts
+## Key concepts
 *   **REST**: URLs name resources; HTTP methods act on them. Works everywhere, easy to cache. The default for public APIs.
 *   **GraphQL**: The client asks for exactly the fields it needs in one request. Less over-fetching, more work on the server.
 *   **gRPC**: Binary messages (Protocol Buffers) over HTTP/2, with generated clients and streaming. Good for service-to-service calls.
@@ -11,22 +11,22 @@ An API is a contract other teams and clients depend on. Good API design means pi
 *   **Idempotency**: Sending the same request twice has the same effect as once. GET, PUT, DELETE are idempotent. POST needs an idempotency key.
 *   **Rate limiting**: Caps how many requests a client can send per period.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **Public APIs**: Payment APIs like Stripe use REST with clear versions and docs.
 *   **Mobile apps**: GraphQL fetches a post, its comments, and the author in one round-trip.
 *   **Internal services**: gRPC for typed, fast calls.
 *   **Payments**: Each `POST /payments` sends an `Idempotency-Key` header so a retry doesn't charge twice.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **GraphQL**: Flexible for clients, but nested queries can cause many DB calls (the N+1 problem) and are hard to cache at a CDN.
 *   **Versioning**: Each live version is code to maintain. Prefer adding fields over new versions.
 *   **REST vs. gRPC**: REST is readable and works in any browser. gRPC is faster and typed but needs generated clients and a proxy for browsers.
 
-### 5. When NOT to Use
+## When not to use
 *   **GraphQL**: A simple CRUD API with one client, or a public API where HTTP caching matters and you can't build query cost limits.
 *   **gRPC**: Public browser-facing APIs.
 
-### 6. Interview Focus
+## Interview focus
 *   **Video platform API**: pagination, uploads, partial updates.
     * Pagination: use a cursor (`next_cursor`) for feeds that change; offsets only for small, stable lists. Set a max page size.
     * Upload: server returns a pre-signed storage URL, client uploads directly, then a background job transcodes.
@@ -82,7 +82,7 @@ An API is a contract other teams and clients depend on. Good API design means pi
     * Correct status codes: 400 bad input, 401 not logged in, 403 not allowed, 404, 409 conflict, 429, 5xx server fault.
     * Include a request ID. Never return stack traces.
 
-### 7. Common Mistakes
+## Common mistakes
 *   **Breaking `v1` in place**: Removing a field or changing its type with no migration path.
 *   **`200 OK` for errors**: Breaks client retries, monitoring, and caches.
 *   **Returning too much**: Sending the full user object (password hash, address) when only the username is needed.

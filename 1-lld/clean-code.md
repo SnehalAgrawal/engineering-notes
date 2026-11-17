@@ -1,6 +1,6 @@
-# Clean Code & Refactoring
+# Clean code
 
-### 1. Overview
+## Overview
 
 Clean code is easy to read, easy to change, and says what it means. Write it for the next person who reads it.
 
@@ -12,7 +12,7 @@ Why it matters for senior engineers:
 * **Steady speed**: the team should move as fast next year as this year.
 * **Safe changes**: code you can change without fear.
 
-### 2. Key Concepts
+## Key concepts
 
 * **Intent-revealing names**: a good name makes a comment unnecessary. `flag` says nothing; `isUserEligibleForDiscount` says everything.
 
@@ -61,24 +61,24 @@ Why it matters for senior engineers:
   handlers[type]?.();
   ```
 
-### 3. Real-World Usage
+## Real-world usage
 
 * **Code reviews**: use shared words ("this has a Long Method smell") instead of "this looks bad".
 * **Legacy migrations**: break a huge `processEverything()` into `processUser()`, `processPayment()`, `processNotification()`, one small step at a time: extract, test, move.
 * **Onboarding**: `if is_user_eligible_for_discount(user):` needs no comment. Clean code works as documentation.
 
-### 4. Tradeoffs
+## Tradeoffs
 
 * **Readability vs. short code**: `arr.filter(x => x.age > 18).map(x => x.name)` is short but the names hide meaning. `users.filter(user => user.age > 18)` is clearer.
 * **Refactoring time**: too much delays delivery; too little slows every later change. Refactor the code you are already touching.
 * **Too many layers**: `getData() -> processData() -> transformData() -> formatData()`. When each layer adds little, the flow is harder to follow.
 
-### 5. When NOT to Use
+## When not to use
 
 * **Legacy code without tests**: add tests that capture current behavior first (characterization tests). Then refactor.
 * **Short-lived scripts**: a script that runs once doesn't need careful structure.
 
-### 6. Interview Focus
+## Interview focus
 
 * **Code review exercise**: turn `function f(x){ return x*0.9 }` into `applyDiscount(price)` with a named `DISCOUNT_RATE` constant.
 * **Refactoring a big ball of mud** (a system with no clear structure):
@@ -88,7 +88,7 @@ Why it matters for senior engineers:
   4. Replace old paths step by step.
 * **Naming**: `handleData()` says nothing. `validateAndCacheUserData()` is clear, and the "and" hints it should be two functions.
 
-### 7. Common Mistakes
+## Common mistakes
 
 * **Refactoring for style only**: if code works, rarely changes, and has no bugs, leave it.
 * **Comments that repeat the code**: `// add 2 numbers` above `a + b`. Write `const totalPrice = basePrice + tax;` and keep comments for the why.

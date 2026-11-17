@@ -1,9 +1,9 @@
-# Cloud Architecture: Helm (The Package Manager for Kubernetes)
+# Helm
 
-### 1. Overview
+## Overview
 Helm packages Kubernetes YAML as a chart: templates plus default values. Installing a chart creates a release, which Helm can upgrade and roll back. Teams use it to deploy one app to several environments, and to install third-party software such as databases or monitoring.
 
-### 2. Key Concepts
+## Key concepts
 *   **Chart**: A folder with `Chart.yaml` (metadata), `values.yaml` (defaults), and `templates/`.
 *   **Template**: YAML with placeholders such as `{{ .Values.replicaCount }}`. Helm renders it into plain YAML.
 *   **Values**: The settings that fill the templates. They come from `values.yaml`, extra `-f` files, and `--set`. Later sources win.
@@ -11,23 +11,23 @@ Helm packages Kubernetes YAML as a chart: templates plus default values. Install
 *   **Revision**: A number Helm adds on every install, upgrade, or rollback of a release.
 *   **Repository**: Where charts are published: an HTTP chart repo or an OCI registry (`oci://...`). Artifact Hub is a search site across repos, not a repo.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **Environments**: One chart, one values file per environment (replicas, resources, hostnames).
 *   **CI/CD**: The pipeline runs `helm upgrade --install` with the new image tag. It installs the first time and upgrades after that.
 *   **Third-party software**: Install a monitoring stack from its official chart and override only what you need.
 *   **Rollback**: `helm rollback <release> <revision>` re-applies an older revision. It does not undo database migrations run by hooks.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Templates vs. plain YAML**: Templates remove copy-paste, but heavy template logic is hard to read and debug.
 *   **Hidden YAML**: You do not see what gets deployed unless you render it. Run `helm template` and review it.
 *   **Helm vs. Kustomize**: Helm fills templates and tracks releases. Kustomize patches plain YAML and has no releases. Many teams use both, often through Argo CD or Flux.
 
-### 5. When NOT to Use
+## When not to use
 *   **Simple apps**: One Deployment and one Service that rarely change are fine as plain YAML with `kubectl apply`.
 *   **Overlay preference**: Teams that prefer Kustomize overlays.
 *   **Working scripts**: A deployment process that works and is understood needs a clear reason to move.
 
-### 6. Interview Focus
+## Interview focus
 *   **Evolution**: "Why was Tiller removed in Helm 3?"
     *   In Helm 2, the CLI sent requests to Tiller, a server inside the cluster. Tiller usually had cluster-admin rights, so anyone who reached it could act as admin.
     *   Helm 3 has no Tiller. The CLI uses your own kubeconfig, so your own RBAC permissions apply.
@@ -40,13 +40,13 @@ Helm packages Kubernetes YAML as a chart: templates plus default values. Install
     *   `--dry-run` on `install` or `upgrade` renders against the cluster without applying.
     *   The `helm-diff` plugin shows what an upgrade would change.
 
-### 7. Common Mistakes
+## Common mistakes
 *   **Hardcoded values**: Image tags or hostnames written in templates instead of values.
 *   **No `.helmignore`**: Local secrets, `.git`, or `node_modules` end up in the package.
 *   **Not bumping `version`**: Changing a chart without a new `version` in `Chart.yaml` makes it unclear which chart a release used, and caches may serve the old one. Rollbacks use revisions, not this version.
 *   **Secrets in values files**: Passwords committed in `values.yaml`. Reference an existing Secret, or use External Secrets Operator or SOPS.
 
-### 8. Example: MERN Stack Chart
+## Example: MERN stack chart
 A React frontend, a Node.js backend, and MongoDB as a dependency chart.
 
 ```mermaid

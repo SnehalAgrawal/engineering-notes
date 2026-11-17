@@ -1,9 +1,9 @@
-# Modern Systems: AI Agents & RAG
+# AI agents and RAG
 
-### 1. Overview
+## Overview
 Many systems now call Large Language Models (LLMs). Two common patterns: RAG, which gives the model relevant private or fresh documents with each question, and agents, which let the model call tools in a loop to finish a task. The engineering work is in retrieval quality, evaluation, latency, cost, and safety.
 
-### 2. Key Concepts
+## Key concepts
 *   **Token**: A piece of a word. Context limits, latency, and price are all counted in tokens.
 *   **Context window**: The most tokens (input plus output) a model can handle in one call. Limits differ by model and change often.
 *   **Prompt template**: A reusable prompt with placeholders, such as `Answer using only these documents: {docs}. Question: {question}`.
@@ -18,23 +18,23 @@ Many systems now call Large Language Models (LLMs). Two common patterns: RAG, wh
 *   **Memory**: Short-term memory is the conversation in the context window. Long-term memory is facts or summaries stored in a database and retrieved later.
 *   **Streaming**: Sending tokens to the user as they are generated, so the first words appear quickly.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **Support assistant**: RAG over policy documents, with citations so users and reviewers can check the source.
 *   **Data analyst agent**: Writes SQL, runs it on a read-only replica, and plots the result.
 *   **Coding agent**: Searches the repository with tools, edits files, runs tests, and opens a pull request for review.
 *   **Recommendations**: Embeddings of products and user behavior find similar items.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **RAG vs. fine-tuning**: RAG suits facts that change or are private, and supports citations. Fine-tuning suits style, format, or narrow tasks. Fine-tuning is a poor way to add facts.
 *   **Agents vs. fixed workflows**: Agents handle open-ended tasks but are less predictable and use more tokens. If the steps are known, a fixed workflow with a few LLM calls is easier to test.
 *   **Model changes**: A new model version or a prompt edit can change behavior. Pin model versions and rerun evaluations before switching.
 *   **Latency**: Responses take seconds. Use streaming, smaller models for simple steps, caching, and parallel tool calls.
 
-### 5. When NOT to Use
+## When not to use
 *   **Predictable CRUD**: If a SQL query and a form solve it, an LLM adds cost, latency, and errors.
 *   **Exact math and strict rules**: Let the model call a calculator, code, or a rules engine instead of doing it itself.
 
-### 6. Interview Focus
+## Interview focus
 *   **Grounding**: "How do you make answers come only from the provided context?"
     *   Retrieve well first: hybrid search, a reranker, and good chunking. Most wrong answers start with bad retrieval.
     *   Instruct the model to answer only from the context, to cite chunk IDs, and to say "I don't know" when the context lacks the answer.
@@ -62,7 +62,7 @@ Many systems now call Large Language Models (LLMs). Two common patterns: RAG, wh
     *   For voice, start the LLM call on partial speech-to-text results instead of waiting for the full sentence.
     *   Cache retrieval results and keep the prompt short.
 
-### 7. Common Mistakes
+## Common mistakes
 *   **Too much context**: Sending whole documents with every call. It costs more and can make answers worse.
 *   **Bad chunking**: Chunks too small lose meaning; chunks too large bury the answer. Split on document structure and keep titles with chunks.
 *   **No evaluation**: Judging by "it feels good" after five questions. Build a test set and measure retrieval (recall@k) and answers (faithfulness, correctness), with tools such as RAGAS.

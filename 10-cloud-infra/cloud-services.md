@@ -1,15 +1,15 @@
-# Cloud Architecture: Core Cloud Services (Azure, AWS, GCP)
+# Cloud services
 
-### 1. Overview
+## Overview
 The big clouds offer the same building blocks under different names: identity, compute, storage, databases, messaging, and monitoring. Learn the categories once and map the names. This note has short summaries of the main Azure services and a table of equivalents.
 
-### 2. Key Concepts
+## Key concepts
 *   **IAM (Identity and Access Management)**: Who can do what on which resource. Give people and workloads the least access they need.
 *   **Managed identity**: An identity the cloud gives a VM, function, or Pod, so code gets tokens without stored keys. Azure calls it managed identity; AWS uses IAM roles; GCP uses service accounts.
 *   **Serverless**: You deploy code or a container. The platform runs, scales (often to zero), and bills per use.
 *   **Object storage**: Files ("objects") in buckets or containers, reached over HTTP. Cheap and very durable. Not a file system.
 
-### 3. Azure Services
+## Azure services
 *   **App Service**: Managed hosting for web apps and APIs. Autoscaling, deployment slots, and built-in CI/CD.
 *   **Azure Functions**: Event-driven serverless functions, triggered by HTTP, queues, timers, and more. Good for small, stateless tasks.
 *   **Azure Container Apps**: Serverless containers with scale-to-zero and KEDA-based autoscaling.
@@ -25,7 +25,7 @@ The big clouds offer the same building blocks under different names: identity, c
 *   **Azure RBAC**: Role assignments on a scope (management group, subscription, resource group, or resource).
 *   **Azure Pipelines**: CI/CD in Azure DevOps.
 
-### 4. Service Equivalents
+## Service equivalents
 
 | Category | Azure | AWS | GCP |
 |---|---|---|---|
@@ -44,7 +44,7 @@ The big clouds offer the same building blocks under different names: identity, c
 | Identity | Entra ID, Azure RBAC | IAM, IAM Identity Center | Cloud IAM, Cloud Identity |
 | CI/CD | Azure Pipelines | CodePipeline, CodeBuild | Cloud Build, Cloud Deploy |
 
-### 5. Interview Focus
+## Interview focus
 *   **Functions vs. App Service**: "Which do you pick for a given workload?"
     *   Functions: spiky or event-driven work, short tasks, pay per run. Watch cold starts and time limits.
     *   App Service: steady web traffic, long-running requests, WebSockets, predictable cost.
@@ -58,7 +58,7 @@ The big clouds offer the same building blocks under different names: identity, c
     *   Send platform logs to a Log Analytics workspace and query them with KQL.
     *   Create Azure Monitor alerts on error rate and latency, routed through action groups.
 
-### 6. Common Mistakes
+## Common mistakes
 *   **Long-lived keys in code or config**: Use managed identities and a secret store (Azure Key Vault, AWS Secrets Manager, GCP Secret Manager).
 *   **Broad roles**: Owner or Contributor on a whole subscription for an app that needs one storage account.
 *   **Queue vs. stream confusion**: Service Bus or SQS for work items processed once. Event Hubs, Kinesis, or Kafka for high-volume streams that several consumers read and can replay.

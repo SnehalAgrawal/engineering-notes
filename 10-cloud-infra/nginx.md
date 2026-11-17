@@ -1,15 +1,15 @@
-# Cloud Architecture: NGINX (Web Server & Reverse Proxy)
+# NGINX
 
-### 1. Overview
+## Overview
 NGINX is a web server most often used as a reverse proxy. It sits in front of your app, handles HTTPS, serves static files, and forwards other requests to the app. This is a working reference for a Linux host. For Kubernetes, see [kubernetes-networking.md](kubernetes-networking.md).
 
-### 2. Key Concepts
+## Key concepts
 *   **Blocks**: Config is nested. `http` holds `server` blocks (one per site), and each `server` holds `location` blocks (one per URL path).
 *   **http-only directives**: `map`, `upstream`, `log_format`, and `proxy_cache_path` go in the `http` block, not inside `server`.
 *   **Reload vs. restart**: `reload` starts new workers with the new config while old ones finish their requests, so nothing is dropped. `restart` stops everything and cuts open connections.
 *   **File layout**: Debian and Ubuntu use `/etc/nginx/sites-available/` plus symlinks in `sites-enabled/`. Other packages use `/etc/nginx/conf.d/*.conf`. Logs are in `/var/log/nginx/`.
 
-### 3. Everyday Commands
+## Everyday commands
 
 ```bash
 sudo nginx -t                  # check the config; run before every reload
@@ -21,7 +21,7 @@ sudo ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/   # enable
 sudo rm /etc/nginx/sites-enabled/myapp                                   # disable it
 ```
 
-### 4. Reverse Proxy for a Frontend and an API
+## Reverse proxy for a frontend and an API
 The frontend build is in `/var/www/html`. The API runs on port 3000 and is served at `/api/`.
 
 ```nginx
@@ -55,7 +55,7 @@ server {
 *   **Trailing slash**: With `proxy_pass http://127.0.0.1:3000;` (no slash) the app gets the full path, `/api/users`.
 *   **WebSockets**: They need HTTP/1.1 and the `Upgrade` and `Connection` headers. NGINX closes a connection that is silent for `proxy_read_timeout` (60s by default), so raise it or send pings.
 
-### 5. HTTPS with Let's Encrypt
+## HTTPS with Let's Encrypt
 
 ```bash
 sudo apt install certbot python3-certbot-nginx
@@ -80,7 +80,7 @@ server {
 
 *   **Renewal**: The package installs a timer or cron job. Check with `systemctl list-timers | grep certbot`.
 
-### 6. Caching
+## Caching
 Browser caching for static files. Long times are safe only when file names change with content (hashed build files).
 
 ```nginx
@@ -112,7 +112,7 @@ location /api/ {
 *   **Microcaching**: Caching for about one second (`proxy_cache_valid 200 1s;`) turns a burst of identical requests into one call to the app.
 *   **Per-user data**: The cache key is `$scheme$proxy_host$request_uri` by default. It ignores cookies and `Authorization`, so do not cache personal responses unless the key includes the user. NGINX already skips responses with `Set-Cookie` or `Cache-Control: private`, `no-cache`, or `no-store`.
 
-### 7. Load Balancing
+## Load balancing
 
 ```nginx
 upstream app {
@@ -126,7 +126,7 @@ upstream app {
 *   **`least_conn`**: Sends each request to the server with the fewest open connections. Good when request times vary.
 *   **Health checks**: Open-source NGINX only has passive checks. After `max_fails` errors within `fail_timeout`, it skips that server for `fail_timeout`. Active checks are an NGINX Plus feature.
 
-### 8. Logging and Monitoring
+## Logging and monitoring
 JSON logs are easy to search in Loki, Elasticsearch, or a SaaS tool:
 
 ```nginx
@@ -144,12 +144,12 @@ error_log  /var/log/nginx/myapp_error.log warn;
 *   **Where time goes**: `$request_time` is the total time. `$upstream_response_time` is the time spent in the app.
 *   **Metrics**: The `stub_status` module exposes connection counts. The NGINX Prometheus exporter turns them into Prometheus metrics.
 
-### 9. Common Mistakes
+## Common mistakes
 *   **Skipping `nginx -t`**: A restart with a broken config leaves the site down.
 *   **Always sending `Connection: upgrade`**: Use the `map` above instead.
 *   **Losing the client IP**: Without `X-Forwarded-For`, the app sees every request as coming from `127.0.0.1`.
 *   **Caching logged-in pages** under a key that does not include the user.
 
-### Further Watching
+## Further watching
 *   NGINX tutorial video: https://www.youtube.com/watch?v=ZmH1L1QeNHk
 *   NGINX tutorial video: https://www.youtube.com/watch?v=7VAI73roXaY

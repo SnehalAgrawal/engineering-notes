@@ -12,7 +12,8 @@ Every topic, linked to its note. Tick a box when you have revised it (fork the r
 - [ ] [Polymorphism](./1-lld/core-oop.md)
 - [ ] [Composition vs inheritance](./1-lld/core-oop.md)
 - [ ] [Interfaces vs abstract classes](./1-lld/core-oop.md)
-- [ ] [Dependency injection](./1-lld/dependency-injection.md)
+- [ ] [Constructor, setter, and field injection](./1-lld/dependency-injection.md)
+- [ ] [IoC containers and lifetimes](./1-lld/dependency-injection.md)
 
 ### SOLID Principles
 
@@ -97,7 +98,9 @@ Every topic, linked to its note. Tick a box when you have revised it (fork the r
 
 ### Approach and Worked Examples
 
-- [ ] [System design framework (URL shortener, ride-hailing, chat)](./3-hld/system-design-framework.md)
+- [ ] [The six-step approach to a design interview](./3-hld/system-design-framework.md)
+- [ ] [Worked designs: URL shortener, ride-hailing, chat](./3-hld/system-design-framework.md)
+- [ ] [Bloom filters](./3-hld/system-design-framework.md)
 - [ ] [High-throughput ingestion (millions of devices)](./3-hld/example-high-throughput-ingestion.md)
 
 ---
@@ -131,8 +134,12 @@ Every topic, linked to its note. Tick a box when you have revised it (fork the r
 - [ ] [Queues: Kafka vs RabbitMQ](./4-distributed-systems/messaging-systems.md)
 - [ ] [Delivery guarantees](./4-distributed-systems/messaging-systems.md)
 - [ ] [Dead letter queues](./4-distributed-systems/messaging-systems.md)
-- [ ] [Stream processing (exactly-once effects, backpressure, watermarks)](./4-distributed-systems/stream-processing.md)
-- [ ] [Data pipelines (ETL vs ELT, orchestration, lineage)](./4-distributed-systems/data-pipelines.md)
+- [ ] [Exactly-once effects in stream processing](./4-distributed-systems/stream-processing.md)
+- [ ] [Watermarks and late events](./4-distributed-systems/stream-processing.md)
+- [ ] [Backpressure](./4-distributed-systems/stream-processing.md)
+- [ ] [ETL vs ELT](./4-distributed-systems/data-pipelines.md)
+- [ ] [Orchestration (Airflow, Data Factory)](./4-distributed-systems/data-pipelines.md)
+- [ ] [Data lineage and backfills](./4-distributed-systems/data-pipelines.md)
 
 ---
 
@@ -199,7 +206,8 @@ Every topic, linked to its note. Tick a box when you have revised it (fork the r
 ### Fundamentals
 
 - [ ] [Declarations, types, equality, modules](./7-javascript/js-fundamentals.md)
-- [ ] [TypeScript](./7-javascript/typescript.md)
+- [ ] [TypeScript types, unions, and narrowing](./7-javascript/typescript.md)
+- [ ] [Generics and utility types](./7-javascript/typescript.md)
 
 ### Core
 
@@ -272,15 +280,23 @@ Every topic, linked to its note. Tick a box when you have revised it (fork the r
 
 - [ ] [Docker](./10-cloud-infra/containers-orchestration.md)
 - [ ] [Kubernetes basics](./10-cloud-infra/containers-orchestration.md)
-- [ ] [Kubernetes networking (Services, Ingress, Gateway API)](./10-cloud-infra/kubernetes-networking.md)
+- [ ] [Kubernetes Services and Ingress](./10-cloud-infra/kubernetes-networking.md)
+- [ ] [Gateway API](./10-cloud-infra/kubernetes-networking.md)
 - [ ] [Autoscaling](./10-cloud-infra/scaling-deployment.md)
 - [ ] [CI/CD](./10-cloud-infra/scaling-deployment.md)
 - [ ] [Rolling, blue-green, and canary deployments](./10-cloud-infra/scaling-deployment.md)
-- [ ] [Terraform](./10-cloud-infra/terraform.md)
-- [ ] [Helm](./10-cloud-infra/helm.md)
-- [ ] [NGINX](./10-cloud-infra/nginx.md)
-- [ ] [WebSocket tooling (WebSocket API, `ws`, Socket.IO)](./10-cloud-infra/websocket-tooling.md)
-- [ ] [Cloud services (Azure, AWS, GCP)](./10-cloud-infra/cloud-services.md)
+- [ ] [Terraform providers, resources, and modules](./10-cloud-infra/terraform.md)
+- [ ] [Terraform state and locking](./10-cloud-infra/terraform.md)
+- [ ] [Helm charts, values, and releases](./10-cloud-infra/helm.md)
+- [ ] [Helm vs Kustomize](./10-cloud-infra/helm.md)
+- [ ] [NGINX as a reverse proxy](./10-cloud-infra/nginx.md)
+- [ ] [HTTPS with Let's Encrypt](./10-cloud-infra/nginx.md)
+- [ ] [NGINX caching and load balancing](./10-cloud-infra/nginx.md)
+- [ ] [WebSocket API vs `ws` vs Socket.IO](./10-cloud-infra/websocket-tooling.md)
+- [ ] [Testing WebSocket servers](./10-cloud-infra/websocket-tooling.md)
+- [ ] [IAM, serverless, and object storage](./10-cloud-infra/cloud-services.md)
+- [ ] [Azure services](./10-cloud-infra/cloud-services.md)
+- [ ] [Azure, AWS, and GCP equivalents](./10-cloud-infra/cloud-services.md)
 
 ---
 
@@ -324,12 +340,15 @@ Every topic, linked to its note. Tick a box when you have revised it (fork the r
 
 ### Tools
 
-- [ ] [Engineering toolbox](./13-core-fundamentals/engineering-toolbox.md)
+- [ ] [Tools to know: Git, CI/CD, cloud, testing, observability](./13-core-fundamentals/engineering-toolbox.md)
 
 ---
 
 ## 14. Leadership and Behavioral
 
-- [ ] [Leadership principles and the STAR method](./14-leadership-and-behavioral/leadership-principles.md)
-- [ ] [Engineering execution and ADRs](./14-leadership-and-behavioral/engineering-execution.md)
-- [ ] [Incident management and postmortems](./14-leadership-and-behavioral/incident-management.md)
+- [ ] [Leadership principles](./14-leadership-and-behavioral/leadership-principles.md)
+- [ ] [The STAR method for behavioral answers](./14-leadership-and-behavioral/leadership-principles.md)
+- [ ] [ADRs and design docs](./14-leadership-and-behavioral/engineering-execution.md)
+- [ ] [Tech debt and buy vs build](./14-leadership-and-behavioral/engineering-execution.md)
+- [ ] [Incident roles, MTTD, and MTTR](./14-leadership-and-behavioral/incident-management.md)
+- [ ] [Blameless postmortems](./14-leadership-and-behavioral/incident-management.md)

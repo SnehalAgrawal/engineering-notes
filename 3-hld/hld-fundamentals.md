@@ -1,9 +1,9 @@
-# HLD Fundamentals: Scalability, CAP, & Fault Tolerance
+# High-level design fundamentals
 
-### 1. Overview
+## Overview
 These are the basic limits every design is judged against: how the system grows, what happens when a part fails, and which data guarantees it drops during a failure.
 
-### 2. Key Concepts
+## Key concepts
 *   **Vertical scaling**: Use a bigger machine. Simple, but there is a size limit and it is still one point of failure.
 *   **Horizontal scaling**: Add more machines behind a load balancer. Works best when services are stateless.
 *   **Stateless service**: Keeps no per-user data between requests. Sessions live in a shared store or a token, so any instance can serve any request.
@@ -35,22 +35,22 @@ These are the basic limits every design is judged against: how the system grows,
     *   *Graceful degradation*: Show cached data if the DB is down. Turn off recommendations but keep checkout working.
     *   *Costs*: More retries mean more load. More replicas mean more money.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **Sale traffic spikes**: Web servers autoscale out. The database is scaled ahead of time and protected by caches and queues.
 *   **Social likes and comments**: Prefer availability. A comment showing up 2 seconds late is fine.
 *   **Money transfers**: Prefer consistency. If the balance can't be checked, reject the transfer.
 *   **Video**: On-demand video is served in large chunks from a CDN for throughput. Live video uses shorter chunks (or WebRTC) for lower delay.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Vertical vs. horizontal**: Vertical is simpler until you hit the size limit. Horizontal needs load balancing and stateless design.
 *   **Consistency vs. latency**: Strong consistency waits for other nodes on each write. Eventual consistency is faster but allows stale reads.
 *   **Availability vs. complexity**: Running in two regions at once raises uptime but adds replication and conflict handling.
 
-### 5. When NOT to Use
+## When not to use
 *   **Many microservices for a small app**: One service and a replicated database is enough for a low-traffic CRUD app.
 *   **Strong consistency everywhere**: Not needed for profile pictures or view counts.
 
-### 6. Interview Focus
+## Interview focus
 *   **Estimation**: "10M daily users each upload 2 photos. Storage?"
     * 20M photos/day. At ~2 MB each, ~40 TB/day before replication.
     * Photos are viewed many times, so outgoing traffic is a multiple of that. Serve reads from a CDN.
@@ -76,7 +76,7 @@ These are the basic limits every design is judged against: how the system grows,
     * Serve a reduced version (cached data, read-only mode).
     * Queues hold work until the failed part recovers.
 
-### 7. Common Mistakes
+## Common mistakes
 *   **Ignoring partitions**: To other nodes, a long GC pause looks the same as a network split.
 *   **"Pick two" CAP**: Say C vs. A during a partition, and latency vs. consistency otherwise.
 *   **Wrong metric**: Cutting average latency when the real problem is the system falling over under load.

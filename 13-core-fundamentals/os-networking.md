@@ -1,9 +1,9 @@
-# OS Internals & Networking Deep Dive
+# Operating systems and networking
 
-### 1. Overview
+## Overview
 Every service runs on the kernel and the network stack. The useful parts: how the OS waits on many connections, how memory behaves when it runs short, what context switches cost, and what each step of a connection adds to latency.
 
-### 2. Key Concepts
+## Key concepts
 *   **Blocking I/O**: The thread waits until data arrives.
 *   **Non-blocking I/O**: The call returns at once if no data is ready.
 *   **I/O multiplexing (epoll, kqueue)**: One thread watches many sockets and is told which are ready to read or write. Node.js (via libuv) and Go use this.
@@ -14,22 +14,22 @@ Every service runs on the kernel and the network stack. The useful parts: how th
 *   **TLS 1.3**: The handshake takes one round trip (TLS 1.2 takes two). Resumed sessions can send 0-RTT data, which can be replayed, so use it only for safe requests.
 *   **HTTP/3 (QUIC over UDP)**: A lost packet stalls only its own stream. In HTTP/2 over TCP, it stalls every stream on the connection.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **Proxies (Nginx, Envoy)**: A few worker processes or threads, each with an epoll event loop, hold huge numbers of connections.
 *   **Database servers**: Give them enough RAM to keep hot data in memory and avoid major page faults.
 *   **Video calls and games**: UDP (e.g., WebRTC), since a late packet is useless. Video on demand (HLS, DASH) mostly runs over HTTP on TCP.
 *   **Container memory limits**: A Kubernetes limit makes the kernel kill the process inside that container, not starve the whole node.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Threads vs. event loop**: Thread-per-connection code is simple but each thread costs memory. Event loops handle many idle connections but are harder to write, and CPU-heavy work blocks the loop.
 *   **TCP vs. UDP**: TCP gives a reliable, ordered stream with congestion control, plus handshake delay and head-of-line blocking. UDP sends separate packets; the app handles loss and order (QUIC does this).
 *   **TLS cost**: Extra round trips and CPU for key exchange. TLS 1.3, session resumption, and reused connections keep it small.
 
-### 5. When NOT to Use
+## When not to use
 *   **Raw sockets for business APIs**: Use HTTP, gRPC, or WebSocket libraries.
 *   **Kernel tuning by default**: Leave settings like `tcp_max_syn_backlog` alone until measurements show a problem.
 
-### 6. Interview Focus
+## Interview focus
 *   **Typing `https://example.com`**: "What happens?"
     * DNS: check browser and OS caches, then ask a resolver (the ISP's, or a public one like `8.8.8.8`), which asks the root, TLD, and domain's servers for the IP.
     * TCP: SYN, SYN-ACK, ACK. One round trip.
@@ -48,7 +48,7 @@ Every service runs on the kernel and the network stack. The useful parts: how th
     * In containers without swap, it shows as OOM kills or constant re-reading of files.
     * Fix: use less memory (smaller caches, fix leaks, tune GC), add RAM, run fewer processes per host.
 
-### 7. Common Mistakes
+## Common mistakes
 *   **Free local IPC**: Talking between processes on one machine still costs system calls, copies, and context switches.
 *   **HTTP/1.1 queuing**: One request at a time per connection, so requests wait behind slow ones. HTTP/2 multiplexes; HTTP/3 also removes TCP-level blocking.
 *   **Trusting `localhost`**: Anything on the host can reach services bound to it, including an SSRF attack through your own app.

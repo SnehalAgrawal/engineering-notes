@@ -1,9 +1,9 @@
-# JavaScript Fundamentals: Quick Reference
+# JavaScript fundamentals
 
-### 1. Overview
+## Overview
 Language basics that come up in screening rounds. Scope, hoisting, `this`, and prototypes are in `js-internals.md`. The event loop is in `js-async-event-loop.md`.
 
-### 2. Key Concepts
+## Key concepts
 *   **`var`, `let`, `const`**:
 
     | | `var` | `let` | `const` |
@@ -43,13 +43,13 @@ Language basics that come up in screening rounds. Scope, hoisting, `this`, and p
 *   **Classes**: Syntax on top of prototypes. Support `#private` fields, `static`, `extends`/`super`. Always strict mode.
 *   **ES modules vs CommonJS**: ES modules (`import`/`export`) are static and strict. CommonJS (`require`/`module.exports`) is Node's older, synchronous system.
 
-### 3. Interview Focus
+## Interview focus
 *   **`[] == false` is `true`, but `[]` is truthy**: `==` turns both into numbers (`[]` → `''` → `0`). Truthiness is a separate rule.
 *   **`null` vs `undefined`**: `undefined` means not set yet. `null` means set to empty on purpose.
 *   **Deep copy**: `structuredClone`. Explain what JSON round-tripping loses.
 *   **When to use `WeakMap`**: Data per object that should go away with the object.
 
-### 4. Common Mistakes
+## Common mistakes
 *   **Thinking `const` means immutable**: It only blocks reassignment.
 *   **`||` for defaults when `0` or `''` are valid**: Use `??`.
 *   **Changing nested data after a shallow copy**: The original changes too.

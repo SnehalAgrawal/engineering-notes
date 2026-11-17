@@ -1,9 +1,9 @@
-# Deployment Strategies & Infrastructure Scaling
+# Deployment and scaling
 
-### 1. Overview
+## Overview
 Deployment strategies let you ship new versions without downtime and limit the damage of a bad release. Autoscaling adds and removes capacity as traffic changes.
 
-### 2. Key Concepts
+## Key concepts
 *   **Rolling update**: Replace old instances with new ones a few at a time. The Kubernetes default.
 *   **Recreate**: Stop all old Pods, then start new ones. Causes downtime, but two versions never run together.
 *   **Blue-green**: Two full environments. Blue serves traffic, Green gets the new version, then traffic switches. Switching back is the rollback.
@@ -15,22 +15,22 @@ Deployment strategies let you ship new versions without downtime and limit the d
 *   **Pipeline stages**: Build, unit tests, integration tests, end-to-end tests, security scan, deploy. Common tools: GitHub Actions, GitLab CI, Jenkins, Azure Pipelines, Google Cloud Build.
 *   **Pipeline secrets**: Keep deploy credentials in the CI tool's secret store or a vault, or use short-lived OIDC tokens instead of long-lived cloud keys.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **Risky release**: A canary shows the new version to a small slice of traffic first.
 *   **Fast rollback**: With blue-green the old version is still running, so rollback is a traffic switch.
 *   **Sales peak**: Scale up on a schedule before a known peak, and let metric-based scaling handle the rest.
 *   **Quality gates**: Tests, a security scan, and review must pass before deploy.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Blue-green vs. canary**: Blue-green is the fastest to switch and roll back but needs double capacity during the cutover. Canary needs less capacity but takes longer and needs good metrics.
 *   **Scaling lag**: New Pods take seconds to start, new nodes take minutes. For sudden spikes, scale ahead on a schedule or keep spare capacity.
 *   **Manual approval**: Automatic deploys give faster feedback. Regulated industries often require a recorded human approval.
 
-### 5. When NOT to Use
+## When not to use
 *   **Blue-green for the database**: Keeping two large databases in sync is risky. Keep one database and make schema changes backward compatible: add the new column, migrate, then remove the old one later (expand/contract).
 *   **Autoscaling a tiny, steady app**: Two servers with flat traffic do not need it.
 
-### 6. Interview Focus
+## Interview focus
 *   **Rolling updates**: "How does a Kubernetes rolling update work, and what happens to open connections?"
     *   A new Pod template creates a new ReplicaSet. Kubernetes scales it up and the old one down in steps.
     *   `maxSurge` is how many extra Pods are allowed. `maxUnavailable` is how many may be missing. Both default to 25%.
@@ -61,7 +61,7 @@ kubectl rollout history deployment/<name> -n <namespace>   # CHANGE-CAUSE comes 
 kubectl rollout undo deployment/<name> -n <namespace>      # add --to-revision=<n> for a specific revision
 ```
 
-### 7. Common Mistakes
+## Common mistakes
 *   **No readiness probe**: Old Pods are removed before new ones can serve.
 *   **Incompatible versions**: During a rollout old and new code run together. New code must not need a column that does not exist yet, and old code must not lose one it reads.
 *   **`replicas` fighting the HPA**: A manifest with a fixed `replicas` resets the HPA on every deploy. Leave `replicas` out when an HPA manages the Deployment.

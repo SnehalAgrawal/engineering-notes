@@ -1,9 +1,9 @@
-# System Design Framework: The 45-Minute Blueprint
+# System design framework
 
-### 1. Overview
+## Overview
 A system design interview checks that you can take a vague problem, lead the discussion, and reach a sensible design with clear tradeoffs. This framework keeps you from getting lost in details before the overall shape is clear.
 
-### 2. Key Concepts (The 6-Step Blueprint)
+## Key concepts: the six-step blueprint
 1.  **Requirements (~5 min)**:
     *   *Functional*: What must it do? ("send a message", "follow a user").
     *   *Non-functional*: Scale (daily users, peak RPS), uptime target, latency target, consistency, durability.
@@ -28,7 +28,7 @@ A system design interview checks that you can take a vague problem, lead the dis
     *   *Monitoring*: logs, metrics, traces, alerts.
     *   *Tradeoffs*: latency vs. cost, consistency vs. availability, simple vs. flexible, open source vs. managed.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **URL shortener**: Create and resolve codes. Generate codes from a unique ID in base62 (0-9, a-z, A-Z). Key-value store, cache for popular codes, rate limiting, click stats sent through a queue. Reads dominate, so focus on caching.
 *   **Chat app (WhatsApp-like)**: Ask about group size, read receipts, media. Gateways hold WebSocket connections (compare with long polling); a registry maps user to gateway; messages stored in order per chat; media in object storage; a presence service for "online / last seen"; push notifications and sync for offline users; end-to-end encryption. Deep dive: routing a message to the right gateway and delivery states (sent, delivered, read).
 *   **Ride hailing (Uber-like)**: Drivers send location often. A geospatial index (geohash, quadtree, PostGIS) finds nearby drivers. Plus matching, pricing, payments, and notifications. Deep dive: write volume of locations, and making sure one driver gets one ride.
@@ -37,16 +37,16 @@ A system design interview checks that you can take a vague problem, lead the dis
 *   **1M concurrent chat users** (prompt scale): Spread connections over many gateway servers. Route messages between gateways with pub/sub (Redis or Kafka). Plan for everyone reconnecting after a restart.
 *   **Worked example**: [High-throughput ingestion (10M sensors)](./example-high-throughput-ingestion.md).
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Breadth vs. depth**: Long estimates eat deep-dive time. Estimate only what changes a decision.
 *   **Day 1 vs. target scale**: Design for the asked scale, but say what you'd build first (often a monolith and one replicated DB).
 *   **More parts, more failures**: Every added component (Kafka, Redis, Kubernetes) must earn its place.
 
-### 5. When NOT to Use
+## When not to use
 *   **LLD interviews**: Use classes and interfaces, not load balancers.
 *   **Focused questions**: If they only want the storage layer, go straight to schema, indexes, and sharding.
 
-### 6. Interview Focus
+## Interview focus
 *   **Lead the session**: State your plan and check: "Requirements, estimates, API, data, architecture, then deep dive. OK?"
 *   **Limited storage**:
     * Compress, set TTLs, move old data to cheaper storage.
@@ -63,14 +63,14 @@ A system design interview checks that you can take a vague problem, lead the dis
     * Afterwards, replace the node to restore the replica count.
     * Monitor failover time, error rate, and replication lag.
 
-### 7. Common Mistakes
+## Common mistakes
 *   **Silence**: Talk through your thinking.
 *   **Picking tech first**: Naming Kafka before the requirements need it.
 *   **Ignoring non-functional needs**: A design that works but can't reach the asked scale.
 
 ---
 
-## Bloom Filters
+## Bloom filters
 A Bloom filter answers "definitely not in the set" or "maybe in the set" using very little memory.
 
 *   **How it works**: A bit array plus k hash functions. Adding a key sets k bits. A lookup checks those k bits: any 0 means definitely absent; all 1 means maybe present.

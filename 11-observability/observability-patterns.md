@@ -1,9 +1,9 @@
-# Observability: Logs, Metrics, & Tracing
+# Observability
 
-### 1. Overview
+## Overview
 Observability is how well you can tell what a system is doing from the data it emits. Monitoring tells you that something is wrong. Observability helps you find out why, even for failures you have not seen before.
 
-### 2. Key Concepts
+## Key concepts
 *   **Logs**: Records of single events, such as "payment failed for order 42". Rich detail, but expensive to store and slow to search at volume.
 *   **Metrics**: Numbers over time, such as request rate or error percentage. Cheap to keep and good for dashboards and alerts.
 *   **Traces**: The path of one request through many services. Each step is a span with a start time and duration. Good for finding where latency comes from.
@@ -16,23 +16,23 @@ Observability is how well you can tell what a system is doing from the data it e
 *   **Error budget**: The failure the SLO allows (100% minus the SLO). While budget is left, ship features. When it runs out, focus on reliability.
 *   **SLA**: Service Level Agreement. A promise to customers with consequences such as service credits. It is usually looser than the internal SLO.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **Alerting**: Page on symptoms users feel, such as a high 5xx rate or fast SLO burn, not on every CPU spike.
 *   **Latency debugging**: A trace shows a request is slow because Service B waits on a slow query in Service C.
 *   **Audit trails**: Structured JSON logs let you find every action by one `user_id` during a security review.
 *   **Capacity planning**: Months of memory and disk metrics show when a database needs a bigger instance.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Log level vs. cost**: `DEBUG` logs in production give detail but cost a lot to ship and store. Log at `INFO` and turn on debug for a short time when needed.
 *   **Trace sampling**: Keeping every trace is expensive. Head sampling decides at the start (keep a fixed share). Tail sampling decides after the trace ends, so it can keep all errors and slow requests.
 *   **Metric cardinality**: Each unique label combination is a new time series. Labels like `user_id` or `request_id` blow up cost and memory. Put those in logs or traces.
 *   **Build vs. buy**: Self-hosted stacks (Prometheus, Grafana, Loki, OpenSearch) give control but need people to run them. SaaS (Datadog, New Relic, Grafana Cloud) is faster to start and costs more as volume grows.
 
-### 5. When NOT to Use
+## When not to use
 *   **Distributed tracing for a single process**: A monolith with one database gets more from logs and a profiler.
 *   **Pushing metrics by default**: Prometheus-style pulling scales well for long-running services. Push (Pushgateway, OTLP, StatsD) fits short-lived jobs and places the server cannot reach.
 
-### 6. Interview Focus
+## Interview focus
 *   **Incident debugging**: "The site is slow. You have CPU and error rate dashboards. How do you find the cause?"
     *   Start with user impact: error rate and latency percentiles. Confirm it is real and see when it started.
     *   Ask what changed at that time: deploys, config changes, feature flags, traffic shape.
@@ -53,14 +53,14 @@ Observability is how well you can tell what a system is doing from the data it e
     *   Monitoring checks known failure modes with fixed thresholds, like a car's check-engine light.
     *   Observability means the data is rich enough (high-cardinality fields, traces, linked logs) to answer new questions, like a mechanic's diagnostic tools.
 
-### 7. Common Mistakes
+## Common mistakes
 *   **Alert fatigue**: Too many noisy alerts, so people miss the real one. Every page should need a human action.
 *   **Unstructured logs**: `Error in user logic!` instead of `{"event":"login_failed","user_id":123,"reason":"bad_password"}`.
 *   **Watching causes, not symptoms**: Tracking CPU but not "login failure rate". Users feel the second one.
 *   **Averages only**: An average hides the slow tail. Use percentiles from histograms.
 *   **No trace ID in logs**: Without it you cannot jump from a slow trace to its logs.
 
-### 8. Tools
+## Tools
 *   **Metrics**: Prometheus with Grafana, or a managed equivalent.
 *   **Logs**: ELK/OpenSearch, Loki.
 *   **Traces**: Jaeger, Tempo, or a vendor backend fed through OpenTelemetry.

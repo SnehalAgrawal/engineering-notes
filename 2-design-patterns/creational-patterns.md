@@ -1,6 +1,6 @@
-# Creational Design Patterns
+# Creational patterns
 
-### 1. Overview
+## Overview
 
 Creational patterns control how objects get created. Instead of calling `new ConcreteClass()` all over the code, creation moves behind a function, a class, or a builder.
 
@@ -9,9 +9,9 @@ Creational patterns control how objects get created. Instead of calling `new Con
 
 Patterns work in any language, but each language has shortcuts. In JavaScript, closures, plain functions, and modules make several of these patterns much smaller than in Java or C#.
 
-### 2. Key Concepts
+## Key concepts
 
-#### 2.1. Singleton
+### Singleton
 
 Only one instance of a class exists, and all code reaches that same instance.
 
@@ -53,7 +53,7 @@ const Counter = (() => {
 })();
 ```
 
-#### 2.2. Factory
+### Factory
 
 Moves the choice of which class to create out of the calling code. Two versions:
 
@@ -107,7 +107,7 @@ class EmailNotifier extends Notifier {
 
 In JavaScript a factory is often just a function: `const createUser = (name) => ({ name, role: "user" });`. A function can also return a pre-configured function: `const multiplier = (factor) => (n) => n * factor;`.
 
-#### 2.3. Builder
+### Builder
 
 Builds a complex object step by step.
 
@@ -137,7 +137,7 @@ class PizzaBuilder {
 const pizza = new PizzaBuilder(12).addCheese().addPepperoni().build();
 ```
 
-#### 2.4. Abstract Factory
+### Abstract Factory
 
 One factory creates a whole family of related objects. The client never names concrete classes, so it can't mix families by mistake.
 
@@ -162,7 +162,7 @@ function renderUI(factory) {
 renderUI(new MacFactory()); // switch to WindowsFactory in one place
 ```
 
-#### 2.5. Prototype
+### Prototype
 
 Creates a new object by copying an existing one. Useful when building from scratch is expensive, for example when it needs a slow DB query.
 
@@ -190,31 +190,31 @@ original.preferences.theme; // still "dark"
 
 In Python, `copy.deepcopy(obj)` does the same.
 
-### 3. Real-World Usage
+## Real-world usage
 
 * **Database connections**: one shared connection pool per process, usually handed out by a DI container.
 * **UI themes**: Abstract Factory for component families (for example Material vs. iOS styling).
 * **Query builders**: Builder for SQL, as in Knex.js or SQLAlchemy Core.
 * **Logging**: a factory returns a console, file, or cloud logger based on config.
 
-### 4. Tradeoffs
+## Tradeoffs
 
 * **Singleton**: hidden global state, hard to reset between tests. Most teams let a DI container keep one instance instead.
 * **Factory**: many small classes can be too much for a simple app.
 * **Builder**: an extra class for each complex type.
 
-### 5. When NOT to Use
+## When not to use
 
 * **Singleton**: when state must be separate per test, per customer, or per request.
 * **Factory**: for a plain `new User()` with no choice to make.
 
-### 6. Interview Focus
+## Interview focus
 
 * **Singleton vs. DI**: a DI container can still give you one instance. But callers receive it as a parameter, so tests can pass a fake.
 * **Builder vs. options object**: in JavaScript, `new Car({ engine: "V8", color: "red" })` is usually enough. Use a Builder when building needs steps, checks across fields (like "engine is required"), or should return an object that can't change later.
 * **Abstract Factory**: keeps a family consistent, for example all dark-mode components come from one factory.
 
-### 7. Common Mistakes
+## Common mistakes
 
 * **Singleton not thread-safe**: in multi-threaded languages (Java, C#, C++), two threads can create the instance at the same time. Create it eagerly, use a lock, or use a language idiom (Java's holder class or enum). Single-threaded JavaScript doesn't have this problem.
 * **Shallow copy in Prototype**: the clone still shares nested objects with the original.

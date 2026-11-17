@@ -1,9 +1,9 @@
-# Node.js: Streams, Clustering, & Event-Driven I/O
+# Node.js
 
-### 1. Overview
+## Overview
 Node.js runs JavaScript on V8. A library called libuv gives it an event loop and non-blocking I/O. Your code runs on one thread per process. The main skills are: keep that thread free, handle big data with streams, and use more than one CPU core.
 
-### 2. Key Concepts
+## Key concepts
 *   **Non-blocking I/O**: Network I/O uses the OS's async features (epoll, kqueue, IOCP). File system, `dns.lookup`, and some `crypto`/`zlib` work run on the libuv thread pool (4 threads by default, set with `UV_THREADPOOL_SIZE`).
 *   **EventEmitter**: Objects that emit named events (`'data'`, `'error'`) that listeners react to. Servers and streams are built on it. An `'error'` event with no listener crashes the process.
 *   **Stream**: Data handled in small chunks, so memory stays small whatever the input size.
@@ -16,23 +16,23 @@ Node.js runs JavaScript on V8. A library called libuv gives it an event loop and
 *   **Cluster**: Several processes of the same app sharing one port. Each has its own memory and event loop.
 *   **Worker threads**: Threads inside one process, each with its own V8 instance and event loop. They talk by messages or `SharedArrayBuffer`. Use them for CPU work, not for I/O.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **Uploads and downloads**: Stream the file to storage with `pipeline`. Memory stays flat even for huge files.
 *   **WebSockets**: An idle connection costs some memory but no thread, so one process can hold many.
 *   **Data pipelines**: Read CSV → Transform rows → Write to a database.
 *   **Using all cores**: One process per CPU (`os.availableParallelism()`) with `cluster` or PM2. In containers, often one process per container and more containers.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Great for I/O, bad for CPU**: One heavy call (a huge `JSON.parse`, a long loop) blocks every request in that process.
 *   **Streams vs reading the whole file**: Less memory, but more error handling. Use `pipeline`, not `.pipe()` chains.
 *   **Cluster and memory**: Every process has its own heap. For example, 8 processes at 500 MB each need about 4 GB.
 *   **Worker threads vs cluster**: Workers are lighter and can share memory. A crash still takes down the whole process; cluster keeps processes separate.
 
-### 5. When NOT to Use
+## When not to use
 *   **Mostly CPU work**: Heavy math, video encoding, or in-process ML inference fit better in Go, Rust, or Java, or in a separate service.
 *   **Shared state in memory across a cluster**: Processes do not share memory. Keep sessions and counters in a store like Redis.
 
-### 6. Interview Focus
+## Interview focus
 *   **Read a 10 GB file with 2 GB RAM**: Stream it, one chunk at a time.
     ```javascript
     // inside an async function
@@ -67,7 +67,7 @@ Node.js runs JavaScript on V8. A library called libuv gives it an event loop and
     await pipeline(fs.createReadStream(src), zlib.createGzip(), fs.createWriteStream(dest));
     ```
 
-### 7. Common Mistakes
+## Common mistakes
 *   **`fs.readFile` on big files**: Loads everything into memory. Use a stream.
 *   **Sync calls in request handlers**: `readFileSync` or `pbkdf2Sync` stall every other request.
 *   **Ignoring `write()` returning `false`**: Memory grows until the process crashes.

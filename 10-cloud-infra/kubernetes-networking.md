@@ -1,9 +1,9 @@
-# Cloud Architecture: Kubernetes Networking (Services, Ingress, Gateway API)
+# Kubernetes networking
 
-### 1. Overview
+## Overview
 A Service gives a group of Pods one stable name inside the cluster. Ingress or the Gateway API sends outside HTTP(S) traffic to Services based on host name and path. Cluster basics are in [containers-orchestration.md](containers-orchestration.md).
 
-### 2. Key Concepts
+## Key concepts
 *   **ClusterIP Service**: The default. A virtual IP reachable only inside the cluster.
 *   **NodePort Service**: Opens the same port on every node.
 *   **LoadBalancer Service**: Asks the cloud for an external load balancer.
@@ -13,13 +13,13 @@ A Service gives a group of Pods one stable name inside the cluster. Ingress or t
 *   **Gateway API**: The successor to Ingress. The platform team owns the `Gateway` (ports, TLS). App teams own `HTTPRoute` objects (paths, backends). Header matching and traffic splitting are built in, not controller-specific annotations.
 *   **Ingress status**: The Ingress API is not deprecated, but it is frozen. New features go into Gateway API.
 
-### 3. Ingress NGINX Retirement
+## Ingress NGINX retirement
 *   **Announcement**: In November 2025 Kubernetes SIG Network announced the retirement of the community Ingress NGINX controller (`kubernetes/ingress-nginx`).
 *   **Status**: Maintenance ended in March 2026. There are no more releases or security fixes.
 *   **Existing clusters**: They keep working but are unpatched. Move to a maintained controller or a Gateway API implementation. None is a drop-in replacement, so migrate and test annotations.
 *   **Not affected**: F5's NGINX Ingress Controller is a different project with a similar name.
 
-### 4. TLS from a Certificate File
+## TLS from a certificate file
 cert-manager usually issues and renews certificates automatically. For a certificate bought from a CA:
 
 ```bash
@@ -105,12 +105,12 @@ kubectl describe ingress app -n web      # rules, TLS secret, and controller eve
 kubectl get gateway,httproute -n web     # check the Accepted and Programmed conditions
 ```
 
-### 5. Interview Focus
+## Interview focus
 *   **Ingress vs. LoadBalancer Service**: Each LoadBalancer Service gets its own cloud load balancer and only routes by port. Ingress or a Gateway puts many hosts and paths behind one entry point and terminates TLS in one place.
 *   **Ingress vs. Gateway API**: Ingress puts advanced features in controller-specific annotations. Gateway API has them in the spec and separates platform and app roles.
 *   **Service gets no traffic**: Check the selector matches the Pod labels, the Pods are Ready, and `targetPort` matches the container port. `kubectl get endpointslices -l kubernetes.io/service-name=<svc>` shows the endpoints.
 
-### 6. Common Mistakes
+## Common mistakes
 *   **Wrong certificate order**: The server certificate must come first, then the intermediates. A missing intermediate may work in browsers but fail in `curl` and API clients.
 *   **Installing from a `main` branch URL**: Pin a release version so the install does not change under you.
 *   **No `ingressClassName`**: No controller, or the wrong one, picks up the Ingress.

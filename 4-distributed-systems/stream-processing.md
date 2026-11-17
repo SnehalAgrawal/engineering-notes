@@ -1,9 +1,9 @@
-# Stream Processing: Exactly-Once & Backpressure
+# Stream processing
 
-### 1. Overview
+## Overview
 Stream processing handles data as it arrives, instead of running jobs over a fixed dataset (batch). The hard parts are keeping state correct after crashes, handling late events, and coping when input is faster than processing.
 
-### 2. Key Concepts
+## Key concepts
 *   **Unbounded data**: A stream with no end: clicks, sensor readings, logs, database change events.
 *   **Event time vs. processing time**: When it happened vs. when the processor saw it. Correct results use event time.
 *   **Tumbling window**: Fixed, non-overlapping blocks (every minute).
@@ -15,23 +15,23 @@ Stream processing handles data as it arrives, instead of running jobs over a fix
 *   **Backpressure**: A slow stage makes earlier stages slow down instead of piling up data until memory runs out. With Kafka as input, the backlog shows as consumer lag.
 *   **Schema registry**: Stores message formats (Avro, Protobuf) and rejects changes that would break consumers.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **Fraud detection**: Flag a card used in several countries within a short time.
 *   **Live dashboards and alerts**: Per-minute metrics, error-rate alerts.
 *   **IoT**: Aggregate sensor data and spot anomalies (see [worked example](../3-hld/example-high-throughput-ingestion.md)).
 *   **Ad tech**: Count impressions and clicks live to adjust bids.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Throughput vs. latency**: Bigger batches process more per second but delay each event.
 *   **Exactly-once vs. speed**: Checkpoints and transactions add delay compared with at-least-once.
 *   **Complete vs. fast**: Waiting longer for late events gives more accurate results, later.
 *   **Large state**: Makes checkpoints, recovery, and rescaling slow.
 
-### 5. When NOT to Use
+## When not to use
 *   **Historical analysis**: Reports over years of data belong in batch jobs. See [data pipelines](./data-pipelines.md).
 *   **Normal CRUD**: Creating a user belongs in a service with a database.
 
-### 6. Interview Focus
+## Interview focus
 *   **Late or out-of-order events**:
     * Watermark = highest event time seen minus a grace period.
     * Late events can update earlier results, go to a side output, or be dropped and counted.
@@ -51,7 +51,7 @@ Stream processing handles data as it arrives, instead of running jobs over a fix
     * Scale out. Parallelism is capped by the Kafka partition count, and adding partitions moves keys.
 *   **Pipeline questions** (clickstream design, schema changes, data integrity): see [data pipelines](./data-pipelines.md).
 
-### 7. Common Mistakes
+## Common mistakes
 *   **Using processing time**: Events don't arrive in order. Use the event's own timestamp.
 *   **No checkpoints**: A crash loses all running totals.
 *   **Unbounded state**: Week-long windows with a one-second slide, or keys that never expire. Use running aggregates and state TTLs.

@@ -1,31 +1,31 @@
-# NoSQL Landscape: Key-Value, Document, Column, & Graph
+# NoSQL databases
 
-### 1. Overview
+## Overview
 NoSQL means databases that don't use relational tables as their main model. They differ a lot from each other. Pick one by matching its data model to how you will read and write the data, and know what you give up (joins, wide transactions, ad hoc queries).
 
-### 2. Key Concepts
+## Key concepts
 *   **Key-value**: Get a value by its key (Redis, DynamoDB). Very fast lookups; little querying by value.
 *   **Document**: JSON-like records with flexible fields and secondary indexes (MongoDB, Couchbase). Good when one entity is read and written as a unit.
 *   **Wide-column**: Rows grouped by a partition key and sorted inside it (Cassandra, HBase). High write throughput; fast reads within one partition. Not the same as a columnar store (ClickHouse, Redshift), which stores each column apart for analytics.
 *   **Graph**: Nodes and edges (Neo4j). Good for following relationships several hops deep.
 *   **NewSQL**: SQL and ACID transactions with automatic sharding across servers (CockroachDB, Google Spanner, YugabyteDB). Costs more latency per write than a single SQL server.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **Sessions, leaderboards**: Redis keys with TTLs and sorted sets.
 *   **Product catalog**: Documents, since a shirt and a laptop have different fields.
 *   **Sensor data**: Cassandra, one partition per device per time bucket, read by time range.
 *   **Fraud, recommendations**: A graph to find friends of friends, or money paths between accounts.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Flexibility vs. integrity**: No fixed schema or foreign keys, so the app must check structure. MongoDB and DynamoDB have multi-record transactions, with more limits than SQL.
 *   **Consistency is a setting**: Cassandra sets it per query. DynamoDB has strong or eventual reads. MongoDB with majority reads and writes acts as CP. "NoSQL means AP" is too simple.
 *   **Queries designed up front**: A new query often needs a new index, a new table, or copied data.
 
-### 5. When NOT to Use
+## When not to use
 *   **Many-record transactions**: Ledgers and similar data are simpler and safer in SQL.
 *   **Unknown queries**: Key-value and wide-column stores need query-first design. If you don't know the queries yet, use SQL.
 
-### 6. Interview Focus
+## Interview focus
 *   **Graph vs. SQL**: "Why might a graph database beat SQL for a connection graph?"
     * In SQL, each hop is another self-join. Two hops are fine; "within 4 hops" needs a recursive CTE and gets slow.
     * A graph DB stores each node's edges directly, so a hop costs about the number of edges followed, not the total graph size.
@@ -53,7 +53,7 @@ NoSQL means databases that don't use relational tables as their main model. They
     db.sessions.createIndex({ createdAt: 1 }, { expireAfterSeconds: 3600 })
     ```
 
-### 7. Common Mistakes
+## Common mistakes
 *   **One database for everything**: Forcing relational data into documents, or keeping the only copy of critical data in a cache.
 *   **No schema at all**: Many shapes of "user" pile up in one collection. Validate in the app or with schema validation.
 *   **Scanning**: The key or index doesn't match the query, so every read scans. Slow, and costly on pay-per-request stores.

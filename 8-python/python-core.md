@@ -1,9 +1,9 @@
-# Python Core: Data Structures & Mutability
+# Python core
 
-### 1. Overview
+## Overview
 Most everyday Python bugs come from two things: picking the wrong data structure, and forgetting that variables are names pointing at objects. If two names point at the same list, changing the list through one name shows up through the other.
 
-### 2. Key Concepts
+## Key concepts
 *   **list**: A dynamic array. Index access, `append`, and `pop()` from the end are O(1). Insert, delete, or `pop(0)` elsewhere are O(n). `x in list` is O(n). Use `collections.deque` for fast adds and removes at both ends.
 *   **tuple**: A fixed sequence that cannot change. It can be a dict key only if everything inside it is hashable.
 *   **set**: Unique items, no order. `x in s` is O(1) on average.
@@ -17,7 +17,7 @@ Most everyday Python bugs come from two things: picking the wrong data structure
         print(i, name.title())   # 1 Alice, then 2 Bob
     ```
 
-### 3. Real-World Usage
+## Real-world usage
 *   **Fast lookups**: Turn a list into a `set` or `dict` before checking membership many times.
 *   **Comprehensions**: Usually a bit faster than a loop with `.append()`, and clearer for simple cases.
 *   **Several return values**: Return a tuple, or a `NamedTuple`/dataclass when fields need names.
@@ -25,16 +25,16 @@ Most everyday Python bugs come from two things: picking the wrong data structure
 *   **Web APIs**: Flask is a small WSGI framework with many extensions. FastAPI is an ASGI framework built on type hints. It validates input with Pydantic, has dependency injection, generates API docs (Swagger UI, ReDoc), and supports `async` endpoints.
 *   **Scripts and CLIs**: `argparse` or `click`/`typer` for command-line options, `pathlib` and `os` for files and paths, `subprocess.run` to call other programs.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Dynamic typing**: Fast to write, but wrong types fail only at runtime. Type hints plus mypy or pyright catch many of these early.
 *   **List vs tuple**: Lists keep spare room so appends are cheap. Tuples are fixed, a bit smaller, and can be dict keys.
 *   **Dict vs dataclass**: Dicts are quick to build but have no fixed fields. Dataclasses give named, typed fields. They save memory only with `@dataclass(slots=True)` (3.10+); otherwise each instance still has a `__dict__`.
 
-### 5. When NOT to Use
+## When not to use
 *   **Mutable default arguments**: Defaults are created once, when `def` runs. `def f(items=[])` shares one list across all calls. Use `items=None` and create the list inside.
 *   **Plain lists for heavy math**: Use NumPy. It stores numbers in compact arrays and loops in C.
 
-### 6. Interview Focus
+## Interview focus
 *   **Mutable default trap**:
     ```python
     def add_to(item, storage=[]):
@@ -48,7 +48,7 @@ Most everyday Python bugs come from two things: picking the wrong data structure
 *   **Shallow vs deep copy**: `copy.copy(x)` (or `x.copy()`, `x[:]`) makes a new outer list that shares the inner objects. `copy.deepcopy(x)` copies everything inside too.
 *   **`is` vs `==`**: `is` checks "same object". `==` checks "equal value". Use `is` only for `None` and similar singletons.
 
-### 7. Common Mistakes
+## Common mistakes
 *   **`+=` on strings in a loop**: Can build a new string each time. Collect parts in a list and use `''.join(parts)`.
 *   **Changing a collection while looping over it**: A list skips items. A dict raises `RuntimeError` if its size changes. Loop over a copy instead.
 *   **`[[0] * 3] * 3`**: Creates three references to the same inner list. Use `[[0] * 3 for _ in range(3)]`.

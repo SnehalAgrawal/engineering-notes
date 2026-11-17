@@ -1,9 +1,9 @@
-# Cloud Architecture: WebSocket Libraries & Testing Tools
+# WebSocket tooling
 
-### 1. Overview
+## Overview
 A WebSocket is a long-lived, two-way connection between client and server (RFC 6455). It starts as a normal HTTP/1.1 request with an `Upgrade: websocket` header. This note compares the three common JavaScript options and shows how to test an endpoint locally. For proxying through NGINX, see [nginx.md](nginx.md).
 
-### 2. WebSocket API vs. `ws` vs. Socket.IO
+## WebSocket API vs. `ws` vs. Socket.IO
 
 | | Browser `WebSocket` API | `ws` package | Socket.IO |
 |---|---|---|---|
@@ -18,7 +18,7 @@ A WebSocket is a long-lived, two-way connection between client and server (RFC 6
 *   **Which to pick**: Use plain WebSocket (with `ws` on the server) when you want a thin protocol or have non-JavaScript clients. Use Socket.IO when you want rooms and reconnection built in and can use its libraries on both ends.
 *   **Scaling Socket.IO**: With several servers, add an adapter (such as the Redis adapter) so a broadcast reaches clients on every server. Long-polling also needs sticky sessions.
 
-### 3. Testing Tools
+## Testing tools
 `wscat` is a command-line WebSocket client from the `ws` maintainers.
 
 ```bash
@@ -50,13 +50,13 @@ Connected (press CTRL+C to quit)
 
 *   **Browser DevTools**: The Network tab (filter "WS") shows the handshake and every message.
 
-### 4. Common Mistakes
+## Common mistakes
 *   **Testing Socket.IO with `wscat`**: You get rejected or see raw Engine.IO packets. Use a Socket.IO client.
 *   **Idle timeouts**: Proxies and load balancers close silent connections. Send pings more often than the timeout.
 *   **No reconnect**: Every deploy drops open connections. Clients should reconnect with random backoff so they do not all return at once.
 *   **`ws://` in production**: Use `wss://` so traffic is encrypted.
 
-### Further Reading
+## Further reading
 *   [wscat](https://github.com/websockets/wscat)
 *   [ws](https://github.com/websockets/ws)
 *   [Socket.IO documentation](https://socket.io/docs/v4/)

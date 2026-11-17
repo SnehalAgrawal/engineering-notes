@@ -1,9 +1,9 @@
-# Cloud Architecture: Containers & Orchestration
+# Containers and orchestration
 
-### 1. Overview
+## Overview
 A container packages an app with its libraries so it runs the same way on any host. An orchestrator such as Kubernetes runs many containers across many machines, restarts them when they fail, and connects them to each other.
 
-### 2. Key Concepts
+## Key concepts
 *   **Image and container**: An image is the packaged app plus a filesystem. A container is a running image: an isolated process that shares the host's kernel.
 *   **CPU architecture**: An image built for amd64 does not run natively on arm64 (and the reverse). Multi-arch images cover both.
 *   **Layers and cache**: Each Dockerfile instruction makes a layer. Docker reuses a cached layer if nothing before it changed, so copy dependency files and install them before copying the source code.
@@ -20,23 +20,23 @@ A container packages an app with its libraries so it runs the same way on any ho
 *   **Control plane**: The API server, etcd (the database), the scheduler, and the controllers. It stores state and makes decisions.
 *   **Worker node**: Runs the kubelet (node agent), a container runtime (containerd or CRI-O), and usually kube-proxy.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **Microservices**: Each service is an image. Kubernetes places it on a node with enough CPU and memory.
 *   **Environment parity**: The same image tag runs in CI, staging, and production. On an Apple silicon Mac, images build as arm64 by default, so build multi-arch images for amd64 servers.
 *   **Self-healing**: The kubelet restarts a crashed container. If a node dies, controllers create new Pods on other nodes. Bare Pods with no controller are not recreated.
 *   **Secrets**: Kubernetes Secrets pass passwords to containers at runtime. They are only base64-encoded by default, so turn on encryption at rest, limit access with RBAC, or use an external secret manager.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Containers vs. VMs**: Containers start faster and use less memory. They share the host kernel, so isolation is weaker. gVisor or Kata Containers add isolation for untrusted code.
 *   **Complexity**: Kubernetes has a real learning and running cost: upgrades, networking, RBAC, monitoring. Managed clusters (EKS, GKE, AKS) remove only the control plane work.
 *   **Small images**: Alpine or distroless images are smaller and safer but have no shell. Use `kubectl debug` to attach a temporary debug container.
 
-### 5. When NOT to Use
+## When not to use
 *   **Static sites**: Use a static host or a single VM.
 *   **A few services, no platform team**: Cloud Run, ECS/Fargate, or Azure Container Apps give most of the benefit without running Kubernetes.
 *   **Desktop or hardware-bound apps**: GUI apps and special drivers fit poorly. GPUs are the main supported exception.
 
-### 6. Interview Focus
+## Interview focus
 *   **Lifecycle**: "What happens when I run `kubectl apply`?"
     *   The API server checks who you are, runs admission checks, validates the object, and saves it in etcd.
     *   The Deployment controller creates or updates a ReplicaSet.
@@ -57,13 +57,13 @@ A container packages an app with its libraries so it runs the same way on any ho
     *   Fix 4: user namespaces (`hostUsers: false` in the Pod spec, on recent Kubernetes versions) map container root to an unprivileged host user.
     *   Fix 5: scan images for known CVEs in CI (Trivy, Grype).
 
-### 7. Common Mistakes
+## Common mistakes
 *   **Using `latest`**: Different nodes can pull different images for the same tag. Deploy a version, git SHA, or digest.
 *   **Wrong probes**: A readiness probe controls traffic. A liveness probe restarts the container. A liveness probe that checks the database restarts every Pod during a database outage. Use a startup probe for slow starters.
 *   **No resource requests**: The scheduler cannot place Pods well, and the HPA cannot compute CPU utilization.
 *   **State in the container**: The container filesystem is lost on replacement. Use volumes or external storage.
 
-### 8. Example Dockerfile
+## Example Dockerfile
 A multi-stage Node.js build that runs as a non-root user:
 
 ```dockerfile
@@ -84,7 +84,7 @@ USER 1000                        # the "node" user of the official image, as a n
 CMD ["node", "dist/server.js"]   # exec form, so the app receives SIGTERM
 ```
 
-### 9. Command Reference
+## Command reference
 
 ```bash
 kubectl config get-contexts

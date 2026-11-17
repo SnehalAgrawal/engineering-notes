@@ -1,6 +1,6 @@
-# SOLID Principles
+# SOLID principles
 
-### 1. Overview
+## Overview
 
 SOLID is five rules for object-oriented design. They keep code easy to change.
 
@@ -17,9 +17,9 @@ They help you avoid two problems:
 | ISP | Small interfaces | Classes don't depend on methods they don't use |
 | DIP | Depend on interfaces, not concrete classes | Easy to swap and mock |
 
-### 2. Key Concepts
+## Key concepts
 
-#### 2.1. Single Responsibility (SRP)
+### Single Responsibility (SRP)
 
 A class should have one reason to change. Keep code together when it changes for the same reason, for the same people.
 
@@ -46,7 +46,7 @@ class EmailService {
 }
 ```
 
-#### 2.2. Open/Closed (OCP)
+### Open/Closed (OCP)
 
 Open for extension, closed for modification. To add a feature, add new code (a subclass, a strategy, a map entry). Don't edit code that already works.
 
@@ -77,7 +77,7 @@ class PremiumDiscount extends Discount {
 
 Something still has to pick the right class, usually a factory or a lookup map. OCP moves the `if` to one place. It does not remove it.
 
-#### 2.3. Liskov Substitution (LSP)
+### Liskov Substitution (LSP)
 
 Code that works with the parent class must keep working with any subclass. A subclass must not:
 
@@ -113,7 +113,7 @@ class Penguin extends Bird {}
 
 If a subclass behaves very differently from its parent, use composition instead of inheritance.
 
-#### 2.4. Interface Segregation (ISP)
+### Interface Segregation (ISP)
 
 A class should not depend on methods it doesn't use. Prefer several small interfaces over one big one.
 
@@ -140,7 +140,7 @@ class Eatable {
 
 JavaScript has no interfaces. There, ISP means small modules and passing narrow objects. TypeScript interfaces express it directly.
 
-#### 2.5. Dependency Inversion (DIP)
+### Dependency Inversion (DIP)
 
 High-level code (business rules) should not depend on low-level code (database, email). Both depend on an interface. The high-level side owns that interface: the service says what it needs, and the database adapter implements it.
 
@@ -166,7 +166,7 @@ class Notification {
 
 Now you can pass an email service, an SMS service, or a mock in tests.
 
-### 3. Real-World Usage
+## Real-world usage
 
 * **Plugins** (OCP): editors and build tools add features without changing the core.
 * **Payment types** (OCP): one class per payment method instead of a growing `if/else`.
@@ -175,7 +175,7 @@ Now you can pass an email service, an SMS service, or a mock in tests.
 * **Testing** (ISP + DIP): mock only the small interface a class uses.
 * **Microservices** (SRP): one service per business area.
 
-### 4. Tradeoffs
+## Tradeoffs
 
 * **Over-engineering**: too many abstractions for a simple problem.
 * **Boilerplate**: more files, interfaces, and wiring.
@@ -183,20 +183,20 @@ Now you can pass an email service, an SMS service, or a mock in tests.
 
 Apply SOLID where code actually changes, not everywhere up front.
 
-### 5. When NOT to Use
+## When not to use
 
 * **Prototypes and MVPs**: speed matters more than structure.
 * **Short-lived scripts**: nobody will maintain them.
 * **Hot paths**: where profiling shows the extra layers cost too much.
 
-### 6. Interview Focus
+## Interview focus
 
 * **Spot the violation**: you get a snippet and name the broken principle. See the examples below.
 * **DIP vs. DI**:
   * DIP is a principle: depend on abstractions, not concrete classes. It says what to achieve.
   * DI is a technique: pass dependencies in from outside. It is one way to follow DIP.
 
-### 7. Common Mistakes
+## Common mistakes
 
 * **SRP as "one method per class"**: SRP is about one reason to change, not one function.
 * **Throwing "not implemented" in a subclass**: a subclass that can't do what the parent does breaks LSP.
@@ -204,9 +204,9 @@ Apply SOLID where code actually changes, not everywhere up front.
 
 ---
 
-### Spot the Violation
+## Spot the violation
 
-#### SRP
+### SRP
 
 ```javascript
 class ReportManager {
@@ -227,7 +227,7 @@ class User {
 
 The entity also saves itself. Active Record frameworks do this on purpose, so it is a tradeoff, not always a bug.
 
-#### OCP
+### OCP
 
 ```javascript
 function calculateSalary(employee) {
@@ -257,7 +257,7 @@ new ContractEmployee(50, 20).calculateSalary(); // 1000
 
 A `PaymentProcessor.process(type)` with `if (type === "card") ... else if (type === "paypal")` breaks OCP the same way.
 
-#### LSP
+### LSP
 
 ```javascript
 class Rectangle {
@@ -280,7 +280,7 @@ function resize(rect) {
 
 A rectangle lets width and height change separately. A square silently breaks that. A subclass that throws where the parent works (an `Ostrich.fly()` that throws) is the other classic case.
 
-#### ISP
+### ISP
 
 ```javascript
 class Machine {
@@ -296,7 +296,7 @@ class Printer extends Machine {
 
 `Printer` must carry methods it can't support. The throwing method is also an LSP problem; the two often come together. A `Robot` forced to implement `Worker.eat()` is the same issue.
 
-#### DIP
+### DIP
 
 ```javascript
 class UserService {
@@ -308,7 +308,7 @@ class UserService {
 
 The service creates a concrete database class itself. Same problem when a method calls `new EmailSender()` inside: it can't be swapped or mocked.
 
-### Quick Checks
+## Quick checks
 
 * **SRP**: does this class have more than one reason to change?
 * **OCP**: must I edit existing code to add a new variant?

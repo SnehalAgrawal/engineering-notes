@@ -1,9 +1,9 @@
-# Reliability Patterns: Circuit Breakers, Retries, & Rate Limiting
+# Reliability patterns
 
-### 1. Overview
+## Overview
 Network calls fail, and slow calls are worse than failed ones because they hold threads and connections. These patterns let a system fail gently and stop one bad dependency from taking everything down.
 
-### 2. Key Concepts
+## Key concepts
 *   **Timeout**: A deadline on every outbound call. Without one, a slow service ties up the caller until it fails too.
 *   **Retry with exponential backoff**: Retry with growing waits (100 ms, 200 ms, 400 ms) and a max number of tries. Retry only errors that may pass next time (timeouts, 503), never bad input.
 *   **Jitter**: Add randomness to each wait so clients don't all retry at the same moment.
@@ -23,23 +23,23 @@ breaker.fallback(() => cachedResponse());
 ```
 A service mesh (Istio, Linkerd, Envoy) can do timeouts, retries, and breaking without code changes, but with less control over fallbacks.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **API gateways**: Per-key rate limits so one noisy customer doesn't slow everyone.
 *   **Payment providers**: Retry short 503 errors with an idempotency key. If the provider keeps failing, open the breaker and show "try again later".
 *   **Mixed workloads**: Separate DB pools for user queries and heavy reports.
 *   **Cloud SDKs**: AWS SDKs retry with backoff and jitter by default.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Retries add wait time**: 5 tries with a 1 s timeout can keep a user waiting 5 s for an error.
 *   **Retries add load**: Retries at several layers multiply. 3 tries at each of 3 layers can mean 27 calls to the bottom service. Retry in one layer only.
 *   **Global vs. local rate limits**: A shared Redis counter is accurate but adds a network hop. Per-instance limits are fast but approximate.
 *   **Fail fast vs. degrade**: An error is honest. Stale fallback data is friendlier but must be safe for the case.
 
-### 5. When NOT to Use
+## When not to use
 *   **Retrying non-idempotent calls**: Never auto-retry `POST /charge` without an idempotency key.
 *   **Long backoff while a user waits**: Fail quickly with a clear message. Do long retries in background jobs.
 
-### 6. Interview Focus
+## Interview focus
 *   **Thundering herd** (everyone retries at once):
     * The spike knocks the recovering service down again.
     * Fix: backoff with jitter, a retry cap, and circuit breakers.
@@ -51,7 +51,7 @@ A service mesh (Istio, Linkerd, Envoy) can do timeouts, retries, and breaking wi
     * Leaky bucket: requests leave at a fixed rate. Smooth, no bursts. Good for traffic shaping.
     * Token bucket: tokens refill at a fixed rate; each request spends one. Allows short bursts. Common for APIs.
 
-### 7. Common Mistakes
+## Common mistakes
 *   **Unlimited retries**: Failures loop forever and eat capacity.
 *   **No jitter**: All servers reconnect at the same moment after an outage.
 *   **No timeouts**: A slow service holds every connection until the caller runs out.

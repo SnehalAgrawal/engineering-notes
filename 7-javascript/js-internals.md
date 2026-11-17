@@ -1,9 +1,9 @@
-# JavaScript Internals: Prototypes, Closures, & V8
+# JavaScript internals
 
-### 1. Overview
+## Overview
 How JavaScript finds variables, what `this` points to, how objects inherit, and how the V8 engine makes code fast.
 
-### 2. Key Concepts
+## Key concepts
 *   **Hoisting**: Declarations are set up before the code in their scope runs.
     *   `var`: function-scoped, starts as `undefined`.
     *   `let`, `const`, `class`: block-scoped. Using them before their line throws a `ReferenceError`. That gap is the Temporal Dead Zone (TDZ).
@@ -39,22 +39,22 @@ How JavaScript finds variables, what `this` points to, how objects inherit, and 
 *   **Inline cache**: Each property access remembers the shapes it saw. One shape is fastest. Many shapes ("megamorphic") is slow.
 *   **Deoptimization**: If a guess about types turns out wrong, V8 throws away the fast code and goes back to a slower tier.
 
-### 3. Real-World Usage
+## Real-world usage
 *   **Private state**: Closures hide variables. Today `#private` class fields do the same.
 *   **Helpers**: `memoize`, `once`, `debounce` are closures over private state.
 *   **Polyfills**: Adding a missing standard method like `Array.prototype.flat` to old browsers. This is the one accepted case of changing a built-in prototype.
 *   **Fast objects**: Set all fields in the constructor, always in the same order.
 
-### 4. Tradeoffs
+## Tradeoffs
 *   **Closures and memory**: Captured variables stay alive as long as the closure. In V8, closures made in the same scope share one context, so one closure can keep another's large variable alive.
 *   **Arrow functions**: Handy for callbacks. Cannot be used with `new`, have no `arguments`, and are a bad fit for object methods.
 *   **Dynamic types**: Code that always sees the same types gets optimized. Code that mixes types stays slower.
 
-### 5. When NOT to Use
+## When not to use
 *   **Deep inheritance**: Long class chains are hard to follow. Prefer composition.
 *   **Changing built-in prototypes in shared code**: Adding your own methods to `Array.prototype` can clash with other libraries or future standards.
 
-### 6. Interview Focus
+## Interview focus
 *   **Counter with a closure**:
     ```javascript
     function createCounter() {
@@ -71,7 +71,7 @@ How JavaScript finds variables, what `this` points to, how objects inherit, and 
     *   The slow case is objects of different shapes reaching the same code: different property order, optional fields, or `delete`.
 *   **`{}.toString()`**: `{}` has no own `toString`. JS finds it on `Object.prototype` and calls it with `this` set to `{}`. Result: `'[object Object]'`.
 
-### 7. Common Mistakes
+## Common mistakes
 *   **Losing `this`**: `setTimeout(obj.method, 0)` calls the method without `obj`. Use `() => obj.method()` or `bind`.
 *   **Arrow function as a method**: `{ get: () => this.name }` reads `this` from outside the object.
 *   **Closure leaks**: A listener that is never removed keeps everything its closure captured.

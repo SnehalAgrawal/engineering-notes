@@ -1,10 +1,10 @@
-# Core Object-Oriented Programming (OOP)
+# Object-oriented programming
 
-### 1. Overview
+## Overview
 
 OOP organizes code into objects that hold data and the functions that work on that data. For senior engineers, OOP is about managing complexity: hide details behind clear boundaries and keep parts independent.
 
-### 2. Key Concepts
+## Key concepts
 
 * **Encapsulation**: keep data private and change it only through methods. Rules like "balance never goes negative" then live in one place.
 
@@ -72,30 +72,30 @@ OOP organizes code into objects that hold data and the functions that work on th
               self.repository.save(data)
   ```
 
-### 3. Real-World Usage
+## Real-world usage
 
 * **Middleware**: frameworks treat every middleware the same through one signature: `(req, res, next)` in Express, `(context, next)` in ASP.NET Core.
 * **SDKs**: a simple `client.upload()` hides multipart uploads, retries, and checksums.
 * **ORMs**: classes map to tables, and a base model class adds common fields like `id` and `created_at`.
 
-### 4. Tradeoffs
+## Tradeoffs
 
 * **Inheritance vs. composition**: inheritance ties child to parent. A change in the parent can silently break children (the fragile base class problem). Composition lets you swap parts and inject fakes in tests.
 * **Too much abstraction**: layers of boilerplate make the flow hard to follow.
 * **Performance**: method lookup at runtime costs a little, usually nothing next to I/O.
 
-### 5. When NOT to Use
+## When not to use
 
 * **Concurrent or data-pipeline code**: shared objects that change cause race conditions. Immutable data and pure functions often fit better (as in Elixir or most data pipelines).
 * **Small scripts**: classes and hierarchies are overkill.
 
-### 6. Interview Focus
+## Interview focus
 
 * **Composition over inheritance for payment gateways**: each gateway can be swapped and tested alone; no deep class tree.
 * **Birds that can and can't fly**: give flying as a separate capability, not a method on every `Bird`.
 * **Abstract class vs. interface**: shared state and code vs. a pure contract; single vs. multiple inheritance.
 
-### 7. Common Mistakes
+## Common mistakes
 
 * **Deep inheritance**: many levels of subclasses make any base class change risky.
 * **Breaking encapsulation**: public fields everywhere, or a getter and setter for every field.

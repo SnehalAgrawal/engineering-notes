@@ -1,6 +1,6 @@
-# UI Architecture Patterns (MVC, MVP, MVVM)
+# UI architecture patterns
 
-### 1. Overview
+## Overview
 
 MVC, MVP, and MVVM split a UI app into three parts:
 
@@ -16,9 +16,9 @@ They differ in who talks to whom and how the View gets updated. They are ideas, 
 
 The examples all build the same counter: a button that adds one, and a label that shows the count.
 
-### 2. Key Concepts
+## Key concepts
 
-#### 2.1. MVC (Model-View-Controller)
+### MVC (Model-View-Controller)
 
 * **Model**: holds the data and tells listeners when it changes.
 * **View**: watches the Model and redraws.
@@ -54,7 +54,7 @@ class CounterController {
 
 Server-side web MVC (Rails, ASP.NET MVC, Spring MVC) is a variation. The controller handles an HTTP request, works with the Model, and picks a template to render. Django uses the same split under the name MTV (model, template, view).
 
-#### 2.2. MVP (Model-View-Presenter)
+### MVP (Model-View-Presenter)
 
 * **View**: passive. It forwards clicks and shows what it is told. It never reads the Model.
 * **Presenter**: all display logic. It gets events from the View, updates the Model, and sends ready-to-show values back.
@@ -79,7 +79,7 @@ class CounterPresenter {
 
 The Presenter only knows the View's small interface. Tests can pass a fake View and check the Presenter without a browser. Common in WinForms apps and in Android apps written before Jetpack's ViewModel.
 
-#### 2.3. MVVM (Model-View-ViewModel)
+### MVVM (Model-View-ViewModel)
 
 * **ViewModel**: exposes state and actions shaped for the View. It has no reference to the View.
 * **View**: binds to the ViewModel. When ViewModel state changes, the View updates by itself. Nobody calls `render()`.
@@ -100,7 +100,7 @@ function CounterView() {                  // View: binds to the ViewModel
 }
 ```
 
-#### 2.4. Comparison
+### Comparison
 
 | | MVC | MVP | MVVM |
 | --- | --- | --- | --- |
@@ -109,7 +109,7 @@ function CounterView() {                  // View: binds to the ViewModel
 | What is easy to test | Controller | Presenter, with a fake View | ViewModel, with no UI |
 | Typical fit | Server-side web frameworks | Desktop, older Android | Frameworks with data binding |
 
-#### 2.5. Related Architectures
+### Related Architectures
 
 * **Flux / Redux**: data flows one way through a single store. Flux: Action → Dispatcher → Store → View. Redux has no dispatcher: `dispatch(action)` → reducer (a pure function) → new state → UI.
 * **Component-based**: the UI is a tree of components that each own their rendering and local state. The default in React, Vue, and Svelte.
@@ -119,33 +119,33 @@ function CounterView() {                  // View: binds to the ViewModel
 * **State machines**: UI behavior as explicit states and transitions. Good for wizards, multi-step forms, and chatbots (for example XState).
 * **Micro frontends**: a large frontend split into apps that separate teams build and deploy on their own (for example with Webpack Module Federation). It solves a team problem, not a code problem.
 
-### 3. Real-World Usage
+## Real-world usage
 
 * **Server-rendered web apps**: MVC, with a controller per route and templates as Views.
 * **Desktop and mobile apps**: MVVM with the platform's binding (WPF, Jetpack, SwiftUI).
 * **Single-page apps**: components, with a store (Redux, Pinia) or hooks acting as ViewModels.
 * **Complex flows**: state machines for checkout or onboarding steps.
 
-### 4. Tradeoffs
+## Tradeoffs
 
 * **MVC**: simple and familiar. Views tied to Models are hard to unit test, and controllers tend to grow too big.
 * **MVP**: easy to test. Each screen needs a Presenter-View interface, which adds code.
 * **MVVM**: no manual View updates. Binding is hidden, so "why did this redraw?" can be hard to debug.
 * **Redux-style stores**: predictable and easy to inspect, but a lot of code for simple state.
 
-### 5. When NOT to Use
+## When not to use
 
 * **Small widgets**: one component with local state is enough.
 * **A global store for everything**: form inputs and other local UI state usually don't belong there.
 * **Micro frontends for one team**: all the deployment cost, none of the team benefit.
 
-### 6. Interview Focus
+## Interview focus
 
 * **MVC vs. MVP vs. MVVM**: answer with who updates the View and whether the View knows the Model.
 * **Why MVP/MVVM test more easily**: display logic lives in a class with no UI code.
 * **"Is React MVC?"**: React is the View. Hooks, stores, or services provide the rest.
 
-### 7. Common Mistakes
+## Common mistakes
 
 * **Fat Controller or ViewModel**: business rules end up in the middle layer instead of the Model.
 * **View reading the Model in MVP**: loses the passive View and the easy testing.
